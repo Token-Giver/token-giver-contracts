@@ -89,7 +89,8 @@ mod CampaignComponent {
             campaign_address
         }
 
-        /// @notice set campaign metadata_uri (`banner_image, description, campaign_image` to be uploaded to arweave or ipfs)
+        /// @notice set campaign metadata_uri (`banner_image, description, campaign_image` to be
+        /// uploaded to arweave or ipfs)
         /// @params campaign_address the targeted campaign address
         /// @params metadata_uri the campaign CID
         fn set_campaign_metadata_uri(
@@ -112,12 +113,18 @@ mod CampaignComponent {
         }
 
         fn set_donations(
-            ref self: ComponentState<TContractState>, campaign_address: ContractAddress, amount: u256
+            ref self: ComponentState<TContractState>,
+            campaign_address: ContractAddress,
+            amount: u256
         ) {
             self.donations.write(campaign_address, amount);
         }
 
-        fn set_available_withdrawal(ref self: ComponentState<TContractState>, campaign_address: ContractAddress, amount: u256){
+        fn set_available_withdrawal(
+            ref self: ComponentState<TContractState>,
+            campaign_address: ContractAddress,
+            amount: u256
+        ) {
             self.withdrawal_balance.write(campaign_address, amount);
         }
 
@@ -125,14 +132,18 @@ mod CampaignComponent {
         //                            GETTERS
         // *************************************************************************
 
-        fn get_donations(self: @ComponentState<TContractState>, campaign_address: ContractAddress) -> u256{
+        fn get_donations(
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
+        ) -> u256 {
             self.donations.read(campaign_address)
         }
-        fn get_available_withdrawal(self: @ComponentState<TContractState>, campaign_address: ContractAddress) -> u256{
+        fn get_available_withdrawal(
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
+        ) -> u256 {
             self.withdrawal_balance.read(campaign_address)
         }
-        
-        
+
+
         // @notice returns the campaign struct of a campaign address
         // @params campaign_address the targeted campaign address
         fn get_campaign(
@@ -164,7 +175,9 @@ mod CampaignComponent {
             campaigns
         }
 
-        fn get_user_campaigns(self: @ComponentState<TContractState>, user: ContractAddress) -> Array<ByteArray>{
+        fn get_user_campaigns(
+            self: @ComponentState<TContractState>, user: ContractAddress
+        ) -> Array<ByteArray> {
             let mut campaigns = ArrayTrait::new();
             let count = self.count.read();
             let mut i: u16 = 1;
