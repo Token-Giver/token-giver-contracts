@@ -9,8 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: software-mansion/setup-scarb@v1
-      - uses: foundry-rs/setup-snfoundry@v3
+      - uses: foundry-rs/setup-snfoundry@v2
         with:
-          starknet-foundry-version: 0.22.0
+          starknet-foundry-version: 0.20.1
       - name: Run cairo tests
         run: snforge test
