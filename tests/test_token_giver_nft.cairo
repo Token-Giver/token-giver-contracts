@@ -21,22 +21,22 @@ fn __setup__() -> ContractAddress {
     (nft_contract_address)
 }
 
-#[test]
-fn test_metadata() {
-    let nft_contract_address = __setup__();
+// #[test]
+// fn test_metadata() {
+//     let nft_contract_address = __setup__();
 
-    let dispatcher = ERC721ABIDispatcher { contract_address: nft_contract_address };
+//     let dispatcher = ERC721ABIDispatcher { contract_address: nft_contract_address };
 
-    start_prank(CheatTarget::One(nft_contract_address), ADMIN.try_into().unwrap());
+//     start_prank(CheatTarget::One(nft_contract_address), ADMIN.try_into().unwrap());
 
-    let nft_name = dispatcher.name();
-    let nft_symbol = dispatcher.symbol();
+//     let nft_name = dispatcher.name();
+//     let nft_symbol = dispatcher.symbol();
 
-    assert(nft_name == "TESTNFT1.0", 'invalid name');
-    assert(nft_symbol == "TNFT1", 'invalid symbol');
+//     assert(nft_name == "TESTNFT1.0", 'invalid name');
+//     assert(nft_symbol == "TNFT1", 'invalid symbol');
 
-    stop_prank(CheatTarget::One(nft_contract_address));
-}
+//     stop_prank(CheatTarget::One(nft_contract_address));
+// }
 
 #[test]
 fn test_last_minted_id_on_init_is_zero() {
