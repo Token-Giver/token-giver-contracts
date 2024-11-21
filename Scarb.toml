@@ -1,0 +1,21 @@
+[package]
+name = "tokengiver"
+version = "0.1.0"
+edition = "2023_10"
+authors = ["Oshioke Salaki & Stephanie Egbuonu"]
+description = "Decentralized Charity Dapp"
+keywords = ["SocialFi", "tokenbound", "cairo", "contracts", "starknet"]
+
+# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
+
+[dependencies]
+starknet = "2.6.4"
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.12.0" }
+token_bound_accounts= { git = "https://github.com/Starknet-Africa-Edu/TBA", tag = "v0.3.0" }
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.22.0" }
+
+[[target.starknet-contract]]
+casm = true
+sierra = true
