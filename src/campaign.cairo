@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::contract]
-mod TokengiverC {
+mod TokengiverCampaign {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
