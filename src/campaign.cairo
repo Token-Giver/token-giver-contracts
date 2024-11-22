@@ -1,12 +1,15 @@
-use starknet::ContractAddress;
-
 #[starknet::component]
-mod CampaignComponent {
+pub mod CampaignComponent {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{
+        ContractAddress, get_caller_address, 
+        storage::{
+            Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess
+        }
+    };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -23,13 +26,13 @@ mod CampaignComponent {
     //                              STORAGE
     // *************************************************************************
     #[storage]
-    struct Storage {
-        campaign: LegacyMap<ContractAddress, Campaign>,
-        campaigns: LegacyMap<u16, ContractAddress>,
-        withdrawal_balance: LegacyMap<ContractAddress, u256>,
+    pub struct Storage {
+        campaign: Map<ContractAddress, Campaign>,
+        campaigns: Map<u16, ContractAddress>,
+        withdrawal_balance: Map<ContractAddress, u256>,
         count: u16,
-        donations: LegacyMap<ContractAddress, u256>,
-        donation_count: LegacyMap<ContractAddress, u16>
+        donations: Map<ContractAddress, u256>,
+        donation_count: Map<ContractAddress, u16>
     }
 
     // *************************************************************************
@@ -37,12 +40,12 @@ mod CampaignComponent {
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         CreateCampaign: CreateCampaign
     }
 
     #[derive(Drop, starknet::Event)]
-    struct CreateCampaign {
+    pub struct CreateCampaign {
         #[key]
         owner: ContractAddress,
         #[key]
@@ -82,8 +85,8 @@ mod CampaignComponent {
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
-            self.campaign.write(campaign_address, new_campaign);
-            self.campaigns.write(count, campaign_address);
+            self.campaign.entry(campaign_address).write(new_campaign);
+            self.campaigns.entry(count).write(campaign_address);
             self.count.write(count);
             self.emit(CreateCampaign { owner: recipient, campaign_address, token_id });
             campaign_address
@@ -98,18 +101,18 @@ mod CampaignComponent {
             campaign_address: ContractAddress,
             metadata_uri: ByteArray
         ) {
-            let mut campaign: Campaign = self.campaign.read(campaign_address);
+            let mut campaign: Campaign = self.campaign.entry(campaign_address).read();
             assert(get_caller_address() == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
             campaign.metadata_URI = metadata_uri;
-            self.campaign.write(campaign_address, campaign);
+            self.campaign.entry(campaign_address).write(campaign);
         }
 
 
         fn set_donation_count(
             ref self: ComponentState<TContractState>, campaign_address: ContractAddress
         ) {
-            let prev_count: u16 = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
+            let prev_count: u16 = self.donation_count.entry(campaign_address).read();
+            self.donation_count.entry(campaign_address).write(prev_count + 1);
         }
 
         fn set_donations(
@@ -117,7 +120,7 @@ mod CampaignComponent {
             campaign_address: ContractAddress,
             amount: u256
         ) {
-            self.donations.write(campaign_address, amount);
+            self.donations.entry(campaign_address).write(amount);
         }
 
         fn set_available_withdrawal(
@@ -125,7 +128,7 @@ mod CampaignComponent {
             campaign_address: ContractAddress,
             amount: u256
         ) {
-            self.withdrawal_balance.write(campaign_address, amount);
+            self.withdrawal_balance.entry(campaign_address).write(amount);
         }
 
         // *************************************************************************
@@ -135,12 +138,12 @@ mod CampaignComponent {
         fn get_donations(
             self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> u256 {
-            self.donations.read(campaign_address)
+            self.donations.entry(campaign_address).read()
         }
         fn get_available_withdrawal(
             self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> u256 {
-            self.withdrawal_balance.read(campaign_address)
+            self.withdrawal_balance.entry(campaign_address).read()
         }
 
 
@@ -149,13 +152,13 @@ mod CampaignComponent {
         fn get_campaign(
             self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> Campaign {
-            self.campaign.read(campaign_address)
+            self.campaign.entry(campaign_address).read()
         }
 
         fn get_campaign_metadata(
             self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> ByteArray {
-            let campaign: Campaign = self.campaign.read(campaign_address);
+            let campaign: Campaign = self.campaign.entry(campaign_address).read();
             campaign.metadata_URI
         }
 
@@ -167,8 +170,8 @@ mod CampaignComponent {
 
             while i < count
                 + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
+                    let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                    let campaign: Campaign = self.campaign.entry(campaignAddress).read();
                     campaigns.append(campaign.metadata_URI);
                     i += 1;
                 };
@@ -184,8 +187,8 @@ mod CampaignComponent {
 
             while i < count
                 + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
+                    let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                    let campaign: Campaign = self.campaign.entry(campaignAddress).read();
                     if campaign.campaign_owner == user {
                         campaigns.append(campaign.metadata_URI);
                     }
@@ -197,7 +200,7 @@ mod CampaignComponent {
         fn get_donation_count(
             self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> u16 {
-            self.donation_count.read(campaign_address)
+            self.donation_count.entry(campaign_address).read()
         }
     }
 }

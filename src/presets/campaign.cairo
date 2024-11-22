@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod TokenGiverCampaign {
+pub mod TokenGiverCampaign {
     use starknet::{ContractAddress, get_caller_address};
     use tokengiver::campaign::CampaignComponent;
 
@@ -9,14 +9,14 @@ mod TokenGiverCampaign {
     impl CampaignImpl = CampaignComponent::TokenGiverCampaign<ContractState>;
 
     #[storage]
-    struct Storage {
+    pub struct Storage {
         #[substorage(v0)]
         campaign: CampaignComponent::Storage
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         #[flat]
         CampaignEvent: CampaignComponent::Event
     }

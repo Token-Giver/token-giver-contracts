@@ -1,5 +1,3 @@
-use starknet::ContractAddress;
-
 // *************************************************************************
 //                             OZ IMPORTS
 // *************************************************************************
@@ -38,7 +36,11 @@ pub mod TokenGiverNFT {
     //                             IMPORTS
     // *************************************************************************
     use openzeppelin::token::erc721::interface::IERC721Metadata;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    use starknet::{ContractAddress, get_caller_address, get_block_timestamp,
+        storage::{
+            Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess
+        }
+    };
     use core::num::traits::zero::Zero;
     use tokengiver::interfaces::ITokenGiverNft;
     use openzeppelin::{
@@ -75,7 +77,7 @@ pub mod TokenGiverNFT {
     //                              STORAGE
     // *************************************************************************
     #[storage]
-    struct Storage {
+    pub struct Storage {
         #[substorage(v0)]
         erc721: ERC721Component::Storage,
         #[substorage(v0)]
@@ -84,8 +86,8 @@ pub mod TokenGiverNFT {
         ownable: OwnableComponent::Storage,
         admin: ContractAddress,
         last_minted_id: u256,
-        mint_timestamp: LegacyMap<u256, u64>,
-        user_token_id: LegacyMap<ContractAddress, u256>,
+        mint_timestamp: Map<u256, u64>,
+        user_token_id: Map<ContractAddress, u256>,
     }
 
     // *************************************************************************
@@ -93,7 +95,7 @@ pub mod TokenGiverNFT {
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         #[flat]
         ERC721Event: ERC721Component::Event,
         #[flat]
@@ -122,17 +124,17 @@ pub mod TokenGiverNFT {
             self.erc721._mint(address, token_id);
             let timestamp: u64 = get_block_timestamp();
 
-            self.user_token_id.write(address, token_id);
+            self.user_token_id.entry(address).write(token_id);
             self.last_minted_id.write(token_id);
-            self.mint_timestamp.write(token_id, timestamp);
+            self.mint_timestamp.entry(token_id).write(timestamp);
         }
 
         fn get_user_token_id(self: @ContractState, user: ContractAddress) -> u256 {
-            self.user_token_id.read(user)
+            self.user_token_id.entry(user).read()
         }
 
         fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
-            self.mint_timestamp.read(token_id)
+            self.mint_timestamp.entry(token_id).read()
         }
 
         fn get_last_minted_id(self: @ContractState) -> u256 {
