@@ -149,12 +149,13 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count + 1 {
-                let campaignAddress: ContractAddress = self.campaigns.read(i);
-                let campaign: Campaign = self.campaign.read(campaignAddress);
-                campaigns.append(campaign.metadata_URI);
-                i += 1;
-            };
+            while i < count
+                + 1 {
+                    let campaignAddress: ContractAddress = self.campaigns.read(i);
+                    let campaign: Campaign = self.campaign.read(campaignAddress);
+                    campaigns.append(campaign.metadata_URI);
+                    i += 1;
+                };
             campaigns
         }
 
@@ -163,14 +164,15 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count + 1 {
-                let campaignAddress: ContractAddress = self.campaigns.read(i);
-                let campaign: Campaign = self.campaign.read(campaignAddress);
-                if campaign.campaign_owner == user {
-                    campaigns.append(campaign.metadata_URI);
-                }
-                i += 1;
-            };
+            while i < count
+                + 1 {
+                    let campaignAddress: ContractAddress = self.campaigns.read(i);
+                    let campaign: Campaign = self.campaign.read(campaignAddress);
+                    if campaign.campaign_owner == user {
+                        campaigns.append(campaign.metadata_URI);
+                    }
+                    i += 1;
+                };
             campaigns
         }
 
