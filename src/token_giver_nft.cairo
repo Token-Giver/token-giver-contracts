@@ -36,10 +36,9 @@ pub mod TokenGiverNFT {
     //                             IMPORTS
     // *************************************************************************
     use openzeppelin::token::erc721::interface::IERC721Metadata;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp,
-        storage::{
-            Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess
-        }
+    use starknet::{
+        ContractAddress, get_caller_address, get_block_timestamp,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use core::num::traits::zero::Zero;
     use tokengiver::interfaces::ITokenGiverNft;

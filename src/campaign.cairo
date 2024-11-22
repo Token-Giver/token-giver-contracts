@@ -5,10 +5,8 @@ pub mod CampaignComponent {
     // *************************************************************************
     use core::traits::TryInto;
     use starknet::{
-        ContractAddress, get_caller_address, 
-        storage::{
-            Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess
-        }
+        ContractAddress, get_caller_address,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
@@ -168,13 +166,12 @@ pub mod CampaignComponent {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
-                    let campaign: Campaign = self.campaign.entry(campaignAddress).read();
-                    campaigns.append(campaign.metadata_URI);
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                let campaign: Campaign = self.campaign.entry(campaignAddress).read();
+                campaigns.append(campaign.metadata_URI);
+                i += 1;
+            };
             campaigns
         }
 
@@ -185,15 +182,14 @@ pub mod CampaignComponent {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
-                    let campaign: Campaign = self.campaign.entry(campaignAddress).read();
-                    if campaign.campaign_owner == user {
-                        campaigns.append(campaign.metadata_URI);
-                    }
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                let campaign: Campaign = self.campaign.entry(campaignAddress).read();
+                if campaign.campaign_owner == user {
+                    campaigns.append(campaign.metadata_URI);
+                }
+                i += 1;
+            };
             campaigns
         }
 
