@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+// use openzeppelin::token::erc20::ERC20Component;    
 
 #[starknet::contract]
 mod TokengiverCampaign {
@@ -6,7 +7,7 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -17,7 +18,16 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
+    // use openzeppelin_token::erc20::interface::{ IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
+
+    #[derive(Drop, Copy, Serde, starknet::Store)]
+    pub struct DonationDetails {
+        token_id: u256,
+        donor_address: ContractAddress,
+        amount: u256,
+    }
 
     // *************************************************************************
     //                              STORAGE
@@ -29,7 +39,9 @@ mod TokengiverCampaign {
         withdrawal_balance: LegacyMap<ContractAddress, u256>,
         count: u16,
         donations: LegacyMap<ContractAddress, u256>,
-        donation_count: LegacyMap<ContractAddress, u16>
+        donation_count: LegacyMap<ContractAddress, u16>,
+        donation_details: LegacyMap<ContractAddress, DonationDetails>,
+        erc20_token: ContractAddress,
     }
 
     // *************************************************************************
@@ -38,7 +50,8 @@ mod TokengiverCampaign {
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
-        CreateCampaign: CreateCampaign
+        CreateCampaign: CreateCampaign,
+        DonationCreated: DonationCreated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -48,6 +61,17 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct DonationCreated {
+        #[key]
+        campaign_id: u256,
+        #[key]
+        donor_address: ContractAddress,
+        Amount: u256,
+        token_id: u256,
+        block_timestamp: u64,
     }
 
     // *************************************************************************
@@ -178,6 +202,47 @@ mod TokengiverCampaign {
 
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
+        }
+
+        fn donate(
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
+        ) {
+            // Get caller address (donor)
+            let donor = get_caller_address();
+
+            let token_address = self.erc20_token.read();
+
+            // Transfer tokens from donor to campaign
+            IERC20Dispatcher { contract_address: token_address }
+                .transfer_from(donor, campaign_address, amount);
+
+            // Update donation count
+            let prev_count = self.donation_count.read(campaign_address);
+            self.donation_count.write(campaign_address, prev_count + 1);
+
+            // Update total donations for the campaign
+            let prev_donations = self.donations.read(campaign_address);
+            self.donations.write(campaign_address, prev_donations + amount);
+
+            // Store donation details
+            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
+            self.donation_details.write(donor, donation_details);
+
+            // Update withdrawal balance
+            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
+            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
+
+            // Emit donation event
+            self
+                .emit(
+                    DonationCreated {
+                        campaign_id: token_id,
+                        donor_address: donor,
+                        Amount: amount,
+                        token_id,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
         }
     }
 }
