@@ -20,6 +20,13 @@ pub trait ICampaign<TState> {
     fn set_donation_count(ref self: TState, campaign_address: ContractAddress);
     fn set_available_withdrawal(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn set_donations(ref self: TState, campaign_address: ContractAddress, amount: u256);
+    fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
+    fn donate(
+        ref self: TState,
+        campaign_address: ContractAddress,
+        token_address: ContractAddress,
+        amount: u256
+    );
 
 
     // Getters
