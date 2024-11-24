@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-// use openzeppelin::token::erc20::ERC20Component;    
 
 #[starknet::contract]
 mod TokengiverCampaign {
@@ -18,7 +17,6 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
-    // use openzeppelin_token::erc20::interface::{ IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 
@@ -69,7 +67,7 @@ mod TokengiverCampaign {
         campaign_id: u256,
         #[key]
         donor_address: ContractAddress,
-        Amount: u256,
+        amount: u256,
         token_id: u256,
         block_timestamp: u64,
     }
@@ -207,38 +205,31 @@ mod TokengiverCampaign {
         fn donate(
             ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
         ) {
-            // Get caller address (donor)
             let donor = get_caller_address();
 
             let token_address = self.erc20_token.read();
 
-            // Transfer tokens from donor to campaign
             IERC20Dispatcher { contract_address: token_address }
                 .transfer_from(donor, campaign_address, amount);
 
-            // Update donation count
             let prev_count = self.donation_count.read(campaign_address);
             self.donation_count.write(campaign_address, prev_count + 1);
 
-            // Update total donations for the campaign
             let prev_donations = self.donations.read(campaign_address);
             self.donations.write(campaign_address, prev_donations + amount);
 
-            // Store donation details
             let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
             self.donation_details.write(donor, donation_details);
 
-            // Update withdrawal balance
             let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
             self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
 
-            // Emit donation event
             self
                 .emit(
                     DonationCreated {
                         campaign_id: token_id,
                         donor_address: donor,
-                        Amount: amount,
+                        amount: amount,
                         token_id,
                         block_timestamp: get_block_timestamp(),
                     }
