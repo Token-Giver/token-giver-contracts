@@ -1,14 +1,12 @@
 use starknet::ContractAddress;
-use tokengiver::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 #[starknet::contract]
 mod TokengiverCampaign {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
-    use super::{ContractAddress, IERC20Dispatcher, IERC20DispatcherTrait};
     use core::traits::TryInto;
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -19,6 +17,7 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 
     // *************************************************************************
@@ -76,13 +75,6 @@ mod TokengiverCampaign {
         amount: u256,
     }
 
-    // #[constructor]
-    // fn constructor(
-    //     ref self: ContractState, token_address: ContractAddress, owner: ContractAddress,
-    // ) {
-    //     self.token.write(IERC20Dispatcher { contract_address: token_address });
-    //     self.owner.write(owner);
-    // }
 
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
