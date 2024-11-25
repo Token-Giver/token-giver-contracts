@@ -6,7 +6,7 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, ClassHash};
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -29,7 +29,8 @@ mod TokengiverCampaign {
         withdrawal_balance: LegacyMap<ContractAddress, u256>,
         count: u16,
         donations: LegacyMap<ContractAddress, u256>,
-        donation_count: LegacyMap<ContractAddress, u16>
+        donation_count: LegacyMap<ContractAddress, u16>,
+        token_giver_nft_class_hash: ClassHash
     }
 
     // *************************************************************************
@@ -48,6 +49,17 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DeployedTokenGiverNFT {
+        pub campaign_id: u256,
+        pub token_giver_nft_contract_address: ContractAddress,
+        pub block_timestamp: u64,
+    }
+
+    fn constructor(ref self: ContractState, token_giver_nft_class_hash: ClassHash) {
+        self.token_giver_nft_class_hash.write(token_giver_nft_class_hash)
     }
 
     // *************************************************************************
@@ -149,13 +161,12 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
-                    campaigns.append(campaign.metadata_URI);
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                campaigns.append(campaign.metadata_URI);
+                i += 1;
+            };
             campaigns
         }
 
@@ -164,20 +175,48 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
-                    if campaign.campaign_owner == user {
-                        campaigns.append(campaign.metadata_URI);
-                    }
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                if campaign.campaign_owner == user {
+                    campaigns.append(campaign.metadata_URI);
+                }
+                i += 1;
+            };
             campaigns
         }
 
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn _deploy_token_giver_nft(
+            ref self: ContractState, campaign_id: u256, token_giver_nft_class_hash: ClassHash,
+        ) -> ContractAddress {
+            let mut constructor_calldata: Array<felt252> = array![
+                campaign_id.low.into(), campaign_id.high.into()
+            ];
+
+            let (account_address, _) = deploy_syscall(
+                token_giver_nft_class_hash,
+                get_block_timestamp().try.into().unwrap(),
+                constructor_calldata.span(),
+                true
+            )
+                .unwrap_syscall();
+
+            self
+                .emit(
+                    DeployedTokenGiverNFT {
+                        campaign_id: community_id,
+                        token_giver_nft_contract_address: account_address,
+                        block_timestamp: get_block_timestamp()
+                    }
+                );
+            account_address
         }
     }
 }
