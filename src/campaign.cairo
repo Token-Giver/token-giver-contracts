@@ -1,12 +1,13 @@
-use starknet::ContractAddress;
-
-#[starknet::contract]
-mod TokengiverCampaign {
+#[starknet::component]
+pub mod CampaignComponent {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    use starknet::{
+        ContractAddress, get_caller_address,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
+    };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -17,29 +18,19 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
-    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
-
-    #[derive(Drop, Copy, Serde, starknet::Store)]
-    pub struct DonationDetails {
-        token_id: u256,
-        donor_address: ContractAddress,
-        amount: u256,
-    }
 
     // *************************************************************************
     //                              STORAGE
     // *************************************************************************
     #[storage]
-    struct Storage {
-        campaign: LegacyMap<ContractAddress, Campaign>,
-        campaigns: LegacyMap<u16, ContractAddress>,
-        withdrawal_balance: LegacyMap<ContractAddress, u256>,
+    pub struct Storage {
+        campaign: Map<ContractAddress, Campaign>,
+        campaigns: Map<u16, ContractAddress>,
+        withdrawal_balance: Map<ContractAddress, u256>,
         count: u16,
-        donations: LegacyMap<ContractAddress, u256>,
-        donation_count: LegacyMap<ContractAddress, u16>,
-        donation_details: LegacyMap<ContractAddress, DonationDetails>,
-        erc20_token: ContractAddress,
+        donations: Map<ContractAddress, u256>,
+        donation_count: Map<ContractAddress, u16>
     }
 
     // *************************************************************************
@@ -47,13 +38,12 @@ mod TokengiverCampaign {
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
-        CreateCampaign: CreateCampaign,
-        DonationCreated: DonationCreated,
+    pub enum Event {
+        CreateCampaign: CreateCampaign
     }
 
     #[derive(Drop, starknet::Event)]
-    struct CreateCampaign {
+    pub struct CreateCampaign {
         #[key]
         owner: ContractAddress,
         #[key]
@@ -61,24 +51,15 @@ mod TokengiverCampaign {
         token_id: u256,
     }
 
-    #[derive(Drop, starknet::Event)]
-    struct DonationCreated {
-        #[key]
-        campaign_id: u256,
-        #[key]
-        donor_address: ContractAddress,
-        amount: u256,
-        token_id: u256,
-        block_timestamp: u64,
-    }
-
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
     // *************************************************************************
-    #[external(v0)]
-    impl CampaignImpl of ICampaign<ContractState> {
+    #[embeddable_as(TokenGiverCampaign)]
+    impl CampaignImpl<
+        TContractState, +HasComponent<TContractState>
+    > of ICampaign<ComponentState<TContractState>> {
         fn create_campaign(
-            ref self: ContractState,
+            ref self: ComponentState<TContractState>,
             token_giverNft_contract_address: ContractAddress,
             registry_hash: felt252,
             implementation_hash: felt252,
@@ -102,8 +83,8 @@ mod TokengiverCampaign {
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
-            self.campaign.write(campaign_address, new_campaign);
-            self.campaigns.write(count, campaign_address);
+            self.campaign.entry(campaign_address).write(new_campaign);
+            self.campaigns.entry(count).write(campaign_address);
             self.count.write(count);
             self.emit(CreateCampaign { owner: recipient, campaign_address, token_id });
             campaign_address
@@ -114,126 +95,111 @@ mod TokengiverCampaign {
         /// @params campaign_address the targeted campaign address
         /// @params metadata_uri the campaign CID
         fn set_campaign_metadata_uri(
-            ref self: ContractState, campaign_address: ContractAddress, metadata_uri: ByteArray
+            ref self: ComponentState<TContractState>,
+            campaign_address: ContractAddress,
+            metadata_uri: ByteArray
         ) {
-            let mut campaign: Campaign = self.campaign.read(campaign_address);
+            let mut campaign: Campaign = self.campaign.entry(campaign_address).read();
             assert(get_caller_address() == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
             campaign.metadata_URI = metadata_uri;
-            self.campaign.write(campaign_address, campaign);
+            self.campaign.entry(campaign_address).write(campaign);
         }
 
 
-        fn set_donation_count(ref self: ContractState, campaign_address: ContractAddress) {
-            let prev_count: u16 = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
+        fn set_donation_count(
+            ref self: ComponentState<TContractState>, campaign_address: ContractAddress
+        ) {
+            let prev_count: u16 = self.donation_count.entry(campaign_address).read();
+            self.donation_count.entry(campaign_address).write(prev_count + 1);
         }
 
-        fn set_donations(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
-            self.donations.write(campaign_address, amount);
+        fn set_donations(
+            ref self: ComponentState<TContractState>,
+            campaign_address: ContractAddress,
+            amount: u256
+        ) {
+            self.donations.entry(campaign_address).write(amount);
         }
 
         fn set_available_withdrawal(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256
+            ref self: ComponentState<TContractState>,
+            campaign_address: ContractAddress,
+            amount: u256
         ) {
-            self.withdrawal_balance.write(campaign_address, amount);
+            self.withdrawal_balance.entry(campaign_address).write(amount);
         }
 
         // *************************************************************************
         //                            GETTERS
         // *************************************************************************
 
-        fn get_donations(self: @ContractState, campaign_address: ContractAddress) -> u256 {
-            self.donations.read(campaign_address)
+        fn get_donations(
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
+        ) -> u256 {
+            self.donations.entry(campaign_address).read()
         }
         fn get_available_withdrawal(
-            self: @ContractState, campaign_address: ContractAddress
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> u256 {
-            self.withdrawal_balance.read(campaign_address)
+            self.withdrawal_balance.entry(campaign_address).read()
         }
 
 
         // @notice returns the campaign struct of a campaign address
         // @params campaign_address the targeted campaign address
-        fn get_campaign(self: @ContractState, campaign_address: ContractAddress) -> Campaign {
-            self.campaign.read(campaign_address)
+        fn get_campaign(
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
+        ) -> Campaign {
+            self.campaign.entry(campaign_address).read()
         }
 
         fn get_campaign_metadata(
-            self: @ContractState, campaign_address: ContractAddress
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
         ) -> ByteArray {
-            let campaign: Campaign = self.campaign.read(campaign_address);
+            let campaign: Campaign = self.campaign.entry(campaign_address).read();
             campaign.metadata_URI
         }
 
 
-        fn get_campaigns(self: @ContractState) -> Array<ByteArray> {
+        fn get_campaigns(self: @ComponentState<TContractState>) -> Array<ByteArray> {
             let mut campaigns = ArrayTrait::new();
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                let campaign: Campaign = self.campaign.entry(campaignAddress).read();
+                campaigns.append(campaign.metadata_URI);
+                i += 1;
+            };
+
+            campaigns
+        }
+
+        fn get_user_campaigns(
+            self: @ComponentState<TContractState>, user: ContractAddress
+        ) -> Array<ByteArray> {
+            let mut campaigns = ArrayTrait::new();
+            let count = self.count.read();
+            let mut i: u16 = 1;
+
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.entry(i).read();
+                let campaign: Campaign = self.campaign.entry(campaignAddress).read();
+                if campaign.campaign_owner == user {
                     campaigns.append(campaign.metadata_URI);
-                    i += 1;
-                };
+                }
+                i += 1;
+            };
+
             campaigns
         }
 
-        fn get_user_campaigns(self: @ContractState, user: ContractAddress) -> Array<ByteArray> {
-            let mut campaigns = ArrayTrait::new();
-            let count = self.count.read();
-            let mut i: u16 = 1;
-
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
-                    if campaign.campaign_owner == user {
-                        campaigns.append(campaign.metadata_URI);
-                    }
-                    i += 1;
-                };
-            campaigns
-        }
-
-        fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
-            self.donation_count.read(campaign_address)
-        }
-
-        fn donate(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
-        ) {
-            let donor = get_caller_address();
-
-            let token_address = self.erc20_token.read();
-
-            IERC20Dispatcher { contract_address: token_address }
-                .transfer_from(donor, campaign_address, amount);
-
-            let prev_count = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
-
-            let prev_donations = self.donations.read(campaign_address);
-            self.donations.write(campaign_address, prev_donations + amount);
-
-            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
-            self.donation_details.write(donor, donation_details);
-
-            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
-            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
-
-            self
-                .emit(
-                    DonationCreated {
-                        campaign_id: token_id,
-                        donor_address: donor,
-                        amount: amount,
-                        token_id,
-                        block_timestamp: get_block_timestamp(),
-                    }
-                );
+        fn get_donation_count(
+            self: @ComponentState<TContractState>, campaign_address: ContractAddress
+        ) -> u16 {
+            self.donation_count.entry(campaign_address).read()
         }
     }
+    
 }
