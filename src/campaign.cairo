@@ -6,7 +6,11 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    use starknet::{
+        ContractAddress, get_caller_address, get_block_timestamp,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
+    };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -32,13 +36,13 @@ mod TokengiverCampaign {
     // *************************************************************************
     #[storage]
     struct Storage {
-        campaign: LegacyMap<ContractAddress, Campaign>,
-        campaigns: LegacyMap<u16, ContractAddress>,
-        withdrawal_balance: LegacyMap<ContractAddress, u256>,
+        campaign: Map<ContractAddress, Campaign>,
+        campaigns: Map<u16, ContractAddress>,
+        withdrawal_balance: Map<ContractAddress, u256>,
         count: u16,
-        donations: LegacyMap<ContractAddress, u256>,
-        donation_count: LegacyMap<ContractAddress, u16>,
-        donation_details: LegacyMap<ContractAddress, DonationDetails>,
+        donations: Map<ContractAddress, u256>,
+        donation_count: Map<ContractAddress, u16>,
+        donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress,
     }
 
@@ -47,13 +51,13 @@ mod TokengiverCampaign {
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct CreateCampaign {
+    pub struct CreateCampaign {
         #[key]
         owner: ContractAddress,
         #[key]
@@ -62,7 +66,7 @@ mod TokengiverCampaign {
     }
 
     #[derive(Drop, starknet::Event)]
-    struct DonationCreated {
+    pub struct DonationCreated {
         #[key]
         campaign_id: u256,
         #[key]
@@ -171,13 +175,12 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
-                    campaigns.append(campaign.metadata_URI);
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                campaigns.append(campaign.metadata_URI);
+                i += 1;
+            };
             campaigns
         }
 
@@ -186,15 +189,14 @@ mod TokengiverCampaign {
             let count = self.count.read();
             let mut i: u16 = 1;
 
-            while i < count
-                + 1 {
-                    let campaignAddress: ContractAddress = self.campaigns.read(i);
-                    let campaign: Campaign = self.campaign.read(campaignAddress);
-                    if campaign.campaign_owner == user {
-                        campaigns.append(campaign.metadata_URI);
-                    }
-                    i += 1;
-                };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                if campaign.campaign_owner == user {
+                    campaigns.append(campaign.metadata_URI);
+                }
+                i += 1;
+            };
             campaigns
         }
 

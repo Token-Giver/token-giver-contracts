@@ -1,78 +1,32 @@
-use starknet::ContractAddress;
-
-// *************************************************************************
-//                             OZ IMPORTS
-// *************************************************************************
-use openzeppelin::{
-    token::erc721::{ERC721Component::{ERC721Metadata, HasComponent}},
-    introspection::src5::SRC5Component,
-};
-
-#[starknet::interface]
-trait IERC721Metadata<TState> {
-    fn name(self: @TState) -> ByteArray;
-    fn symbol(self: @TState) -> ByteArray;
-}
-
-#[starknet::embeddable]
-impl IERC721MetadataImpl<
-    TContractState,
-    +HasComponent<TContractState>,
-    +SRC5Component::HasComponent<TContractState>,
-    +Drop<TContractState>
-> of IERC721Metadata<TContractState> {
-    fn name(self: @TContractState) -> ByteArray {
-        let component = HasComponent::get_component(self);
-        ERC721Metadata::name(component)
-    }
-
-    fn symbol(self: @TContractState) -> ByteArray {
-        let component = HasComponent::get_component(self);
-        ERC721Metadata::symbol(component)
-    }
-}
-
 #[starknet::contract]
 pub mod TokenGiverNFT {
     // *************************************************************************
     //                             IMPORTS
     // *************************************************************************
-    use openzeppelin::token::erc721::interface::IERC721Metadata;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    use starknet::{ContractAddress, get_block_timestamp};
     use core::num::traits::zero::Zero;
-    use tokengiver::interfaces::ITokenGiverNft;
-    use openzeppelin::{
-        account, access::ownable::OwnableComponent,
-        token::erc721::{
-            ERC721Component, erc721::ERC721Component::InternalTrait as ERC721InternalTrait
-        },
-        introspection::{src5::SRC5Component}
+    use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
+    use openzeppelin::{account, access::ownable::OwnableComponent};
+
+    use starknet::storage::{
+        Map, StoragePointerWriteAccess, StoragePointerReadAccess, StorageMapReadAccess,
+        StorageMapWriteAccess
     };
-    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: SRC5Component, storage: src5, event: SRC5Event);
-    component!(path: ERC721Component, storage: erc721, event: ERC721Event);
-
-    // allow to check what interface is supported
-    #[abi(embed_v0)]
-    impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
-    impl SRC5InternalImpl = SRC5Component::InternalImpl<ContractState>;
-
-    // make it a NFT
-    #[abi(embed_v0)]
-    impl ERC721Impl = ERC721Component::ERC721Impl<ContractState>;
-    #[abi(embed_v0)]
-    impl ERC721CamelOnlyImpl = ERC721Component::ERC721CamelOnlyImpl<ContractState>;
-    // allow to query name of nft collection
-    #[abi(embed_v0)]
-    impl ERC721MetadataImpl = ERC721Component::ERC721MetadataImpl<ContractState>;
-    // add an owner
-    #[abi(embed_v0)]
-    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
-    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
-
+    use tokengiver::interfaces::ITokenGiverNft;
 
     // *************************************************************************
-    //                              STORAGE
+    //                             COMPONENTS
+    // *************************************************************************
+    component!(path: ERC721Component, storage: erc721, event: ERC721Event);
+    component!(path: SRC5Component, storage: src5, event: SRC5Event);
+
+    // ERC721 Mixin
+    impl ERC721MixinImpl = ERC721Component::ERC721MixinImpl<ContractState>;
+    impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
+
+    // *************************************************************************
+    //                             STORAGE
     // *************************************************************************
     #[storage]
     struct Storage {
@@ -84,12 +38,12 @@ pub mod TokenGiverNFT {
         ownable: OwnableComponent::Storage,
         admin: ContractAddress,
         last_minted_id: u256,
-        mint_timestamp: LegacyMap<u256, u64>,
-        user_token_id: LegacyMap<ContractAddress, u256>,
+        mint_timestamp: Map<u256, u64>,
+        user_token_id: Map<ContractAddress, u256>,
     }
 
     // *************************************************************************
-    //                              EVENTS
+    //                             EVENTS
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -97,9 +51,7 @@ pub mod TokenGiverNFT {
         #[flat]
         ERC721Event: ERC721Component::Event,
         #[flat]
-        SRC5Event: SRC5Component::Event,
-        #[flat]
-        OwnableEvent: OwnableComponent::Event,
+        SRC5Event: SRC5Component::Event
     }
 
     // *************************************************************************
@@ -115,11 +67,16 @@ pub mod TokenGiverNFT {
             );
     }
 
+
     #[abi(embed_v0)]
     impl TokenGiverImpl of ITokenGiverNft::ITokenGiverNft<ContractState> {
+        // *************************************************************************
+        //                            EXTERNAL
+        // *************************************************************************
+
         fn mint_token_giver_nft(ref self: ContractState, address: ContractAddress) {
             let mut token_id = self.last_minted_id.read() + 1;
-            self.erc721._mint(address, token_id);
+            self.erc721.mint(address, token_id);
             let timestamp: u64 = get_block_timestamp();
 
             self.user_token_id.write(address, token_id);
@@ -127,16 +84,19 @@ pub mod TokenGiverNFT {
             self.mint_timestamp.write(token_id, timestamp);
         }
 
+
         fn get_user_token_id(self: @ContractState, user: ContractAddress) -> u256 {
             self.user_token_id.read(user)
         }
 
-        fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
-            self.mint_timestamp.read(token_id)
-        }
 
         fn get_last_minted_id(self: @ContractState) -> u256 {
             self.last_minted_id.read()
+        }
+
+
+        fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
+            self.mint_timestamp.read(token_id)
         }
     }
 }
