@@ -12,7 +12,7 @@ use starknet::ContractAddress;
 // displayed name, description, beneficiary, etc.
 #[derive(Drop, Serde, starknet::Store)]
 pub struct Campaign {
-    campaign_address: ContractAddress,
-    campaign_owner: ContractAddress,
-    metadata_URI: ByteArray,
+    pub campaign_address: ContractAddress,
+    pub campaign_owner: ContractAddress,
+    pub metadata_URI: ByteArray,
 }

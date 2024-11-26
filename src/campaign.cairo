@@ -6,7 +6,11 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+    use starknet::{
+        ContractAddress, get_caller_address, get_block_timestamp,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
+    };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -37,9 +41,9 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
 
     #[storage]
     struct Storage {
-        campaign: LegacyMap<ContractAddress, Campaign>,
-        campaigns: LegacyMap<u16, ContractAddress>,
-        withdrawal_balance: LegacyMap<ContractAddress, u256>,
+        campaign: Map<ContractAddress, Campaign>,
+        campaigns: Map<u16, ContractAddress>,
+        withdrawal_balance: Map<ContractAddress, u256>,
         count: u16,
         donations: LegacyMap<ContractAddress, u256>,
         donation_count: LegacyMap<ContractAddress, u16>,
@@ -48,6 +52,9 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
         owner: ContractAddress,
 
         donation_details: LegacyMap<ContractAddress, DonationDetails>,
+        donations: Map<ContractAddress, u256>,
+        donation_count: Map<ContractAddress, u16>,
+        donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress,
     }
 
@@ -56,17 +63,16 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
     // *************************************************************************
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         CreateCampaign: CreateCampaign,
 
         Withdrawal: Withdrawal,
-        Donation: Donation
-====
+        Donation: Donation,
         DonationCreated: DonationCreated,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct CreateCampaign {
+    pub struct CreateCampaign {
         #[key]
         owner: ContractAddress,
         #[key]
@@ -75,7 +81,6 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
     }
 
     #[derive(Drop, starknet::Event)]
-
     struct Withdrawal {
         #[key]
         campaign_address: ContractAddress,
@@ -97,6 +102,7 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
 
 
     struct DonationCreated {
+    pub struct DonationCreated {
         #[key]
         campaign_id: u256,
         #[key]
@@ -230,7 +236,6 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
             let mut campaigns: Array<ByteArray> = ArrayTrait::new();
             let count: u16 = self.count.read();
             let mut i: u16 = 1;
-
             while i < count
                 + 1 {
                     let campaign_address: ContractAddress = self.campaigns.read(i);
@@ -238,6 +243,12 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
                     campaigns.append(campaign.metadata_URI);
                     i += 1;
                 };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                campaigns.append(campaign.metadata_URI);
+                i += 1;
+            };
             campaigns
         }
 
@@ -245,7 +256,6 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
             let mut campaigns: Array<ByteArray> = ArrayTrait::new();
             let count: u16 = self.count.read();
             let mut i: u16 = 1;
-
             while i < count
                 + 1 {
                     let campaign_address: ContractAddress = self.campaigns.read(i);
@@ -255,6 +265,14 @@ use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE}
                     }
                     i += 1;
                 };
+            while i < count + 1 {
+                let campaignAddress: ContractAddress = self.campaigns.read(i);
+                let campaign: Campaign = self.campaign.read(campaignAddress);
+                if campaign.campaign_owner == user {
+                    campaigns.append(campaign.metadata_URI);
+                }
+                i += 1;
+            };
             campaigns
         }
 
