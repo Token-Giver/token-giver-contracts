@@ -19,6 +19,14 @@ mod TokengiverCampaign {
     use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
+
+    #[derive(Drop, Copy, Serde, starknet::Store)]
+    pub struct DonationDetails {
+        token_id: u256,
+        donor_address: ContractAddress,
+        amount: u256,
+    }
+
     // *************************************************************************
     //                              STORAGE
     // *************************************************************************
@@ -33,6 +41,8 @@ mod TokengiverCampaign {
         donation_count: LegacyMap<ContractAddress, u16>,
         token: IERC20Dispatcher,
         owner: ContractAddress,
+        donation_details: LegacyMap<ContractAddress, DonationDetails>,
+        erc20_token: ContractAddress,
     }
 
     // *************************************************************************
@@ -43,7 +53,8 @@ mod TokengiverCampaign {
     enum Event {
         CreateCampaign: CreateCampaign,
         Withdrawal: Withdrawal,
-        Donation: Donation
+        Donation: Donation,
+        DonationCreated: DonationCreated,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -74,6 +85,16 @@ mod TokengiverCampaign {
         amount: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    struct DonationCreated {
+        #[key]
+        campaign_id: u256,
+        #[key]
+        donor_address: ContractAddress,
+        amount: u256,
+        token_id: u256,
+        block_timestamp: u64,
+    }
 
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
@@ -113,11 +134,9 @@ mod TokengiverCampaign {
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
-
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
-
             self.emit(CreateCampaign { owner: recipient, campaign_address, token_id });
             campaign_address
         }
