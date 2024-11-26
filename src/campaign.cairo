@@ -19,7 +19,6 @@ mod TokengiverCampaign {
     use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
-
     // *************************************************************************
     //                              STORAGE
     // *************************************************************************
@@ -131,7 +130,8 @@ mod TokengiverCampaign {
             ref self: ContractState, campaign_address: ContractAddress, metadata_uri: ByteArray
         ) {
             let mut campaign: Campaign = self.campaign.read(campaign_address);
-            assert(get_caller_address() == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
+
+            assert(get_caller_address() == campaign.campaign_owner, 'NOT_CAMPAIGN_OWNER');
             campaign.metadata_URI = metadata_uri;
             self.campaign.write(campaign_address, campaign);
         }
@@ -162,32 +162,12 @@ mod TokengiverCampaign {
 
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
 
-            // Transfer tokens
-            self.token.read().transfer_from(campaign_address, caller, amount);
+            // IERC20Dispatcher for transfer
+            let token_address = self.token.read().contract_address;
+            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+            token_dispatcher.transfer(caller, amount);
+
             self.emit(Withdrawal { campaign_address, recipient: caller, amount });
-        }
-
-        fn donate(
-            ref self: ContractState,
-            campaign_address: ContractAddress,
-            token_address: ContractAddress,
-            amount: u256
-        ) {
-            let caller: ContractAddress = get_caller_address();
-
-            IERC20Dispatcher { contract_address: token_address }
-                .transfer_from(caller, campaign_address, amount);
-
-            let prev_count: u16 = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
-
-            let prev_donations: u256 = self.donations.read(campaign_address);
-            self.donations.write(campaign_address, prev_donations + amount);
-
-            let prev_withdrawal_balance: u256 = self.withdrawal_balance.read(campaign_address);
-            self.withdrawal_balance.write(campaign_address, prev_withdrawal_balance + amount);
-
-            self.emit(Donation { campaign_address, donor: caller, token_address, amount });
         }
 
         // *************************************************************************
