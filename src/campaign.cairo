@@ -6,12 +6,14 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+
+    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp, ClassHash};
     use starknet::{
         ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
         syscalls::deploy_syscall,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
+    
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -46,6 +48,7 @@ mod TokengiverCampaign {
         donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
+
     }
 
     // *************************************************************************
@@ -75,6 +78,7 @@ mod TokengiverCampaign {
         pub block_timestamp: u64,
     }
 
+
     #[derive(Drop, starknet::Event)]
     pub struct DonationCreated {
         #[key]
@@ -85,6 +89,7 @@ mod TokengiverCampaign {
         token_id: u256,
         block_timestamp: u64,
     }
+    
 
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
@@ -248,8 +253,7 @@ mod TokengiverCampaign {
                 );
         }
     }
-
-    #[generate_trait]
+      #[generate_trait]
     impl InternalImpl of InternalTrait {
         fn deploy_token_giver_nft(
             ref self: ContractState, token_giver_nft_class_hash: ClassHash, campaign_id: u256
@@ -277,4 +281,6 @@ mod TokengiverCampaign {
             token_giver_nft_address
         }
     }
+
+
 }
