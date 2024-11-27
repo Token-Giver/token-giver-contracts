@@ -87,6 +87,14 @@ mod TokengiverCampaign {
     }
 
     // *************************************************************************
+    //                              CONSTRUCTOR
+    // *************************************************************************
+    #[constructor]
+    fn constructor(ref self: ContractState, token_giver_nft_class_hash: ClassHash) {
+        self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
+    }
+
+    // *************************************************************************
     //                            EXTERNAL FUNCTIONS
     // *************************************************************************
     #[external(v0)]
