@@ -8,7 +8,6 @@ use tokengiver::base::types::Campaign;
 pub trait ICampaign<TState> {
     fn create_campaign(
         ref self: TState,
-        token_giverNft_contract_address: ContractAddress,
         registry_hash: felt252,
         implementation_hash: felt252,
         salt: felt252,
