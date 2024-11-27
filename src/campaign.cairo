@@ -65,6 +65,7 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+        token_giverNft_contract_address: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -92,15 +93,14 @@ mod TokengiverCampaign {
     impl CampaignImpl of ICampaign<ContractState> {
         fn create_campaign(
             ref self: ContractState,
-            token_giverNft_contract_address: ContractAddress,
             registry_hash: felt252,
             implementation_hash: felt252,
             salt: felt252,
             recipient: ContractAddress
         ) -> ContractAddress {
             let count: u16 = self.count.read() + 1;
-            ITokenGiverNftDispatcher { contract_address: token_giverNft_contract_address }
-                .mint_token_giver_nft(recipient);
+            let token_giverNft_contract_address = self
+                .deploy_token_giver_nft(self.token_giver_nft_class_hash.read(), count.into());
             let token_id = ITokenGiverNftDispatcher {
                 contract_address: token_giverNft_contract_address
             }
@@ -118,7 +118,15 @@ mod TokengiverCampaign {
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
-            self.emit(CreateCampaign { owner: recipient, campaign_address, token_id });
+            self
+                .emit(
+                    CreateCampaign {
+                        owner: recipient,
+                        campaign_address,
+                        token_id,
+                        token_giverNft_contract_address
+                    }
+                );
             campaign_address
         }
 
