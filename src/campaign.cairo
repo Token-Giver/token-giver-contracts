@@ -6,9 +6,9 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp,
+        ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
+        syscalls::deploy_syscall,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
@@ -44,6 +44,8 @@ mod TokengiverCampaign {
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress, // STRerc20 address
+        erc20_token: ContractAddress,
+        token_giver_nft_class_hash: ClassHash,
     }
 
     // *************************************************************************
@@ -64,6 +66,7 @@ mod TokengiverCampaign {
         #[key]
         recipient: ContractAddress,
         amount: u256,
+        DeployedTokenGiverNFT: DeployedTokenGiverNFT,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -73,6 +76,13 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DeployedTokenGiverNFT {
+        pub campaign_id: u256,
+        pub token_giver_nft_contract_address: ContractAddress,
+        pub block_timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -263,6 +273,35 @@ mod TokengiverCampaign {
                         block_timestamp: get_block_timestamp(),
                     }
                 );
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn deploy_token_giver_nft(
+            ref self: ContractState, token_giver_nft_class_hash: ClassHash, campaign_id: u256
+        ) -> ContractAddress {
+            let mut constructor_calldata: Array<felt252> = array![
+                campaign_id.low.into(), campaign_id.high.into()
+            ];
+
+            let (token_giver_nft_address, _) = deploy_syscall(
+                token_giver_nft_class_hash,
+                get_block_timestamp().try_into().unwrap(),
+                constructor_calldata.span(),
+                false
+            )
+                .unwrap();
+
+            self
+                .emit(
+                    DeployedTokenGiverNFT {
+                        campaign_id: campaign_id,
+                        token_giver_nft_contract_address: token_giver_nft_address,
+                        block_timestamp: get_block_timestamp()
+                    }
+                );
+            token_giver_nft_address
         }
     }
 }
