@@ -20,7 +20,7 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
+    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 
@@ -165,6 +165,23 @@ mod TokengiverCampaign {
             ref self: ContractState, campaign_address: ContractAddress, amount: u256
         ) {
             self.withdrawal_balance.write(campaign_address, amount);
+        }
+
+        // withdraw function
+        fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
+            let campaign: Campaign = self.campaign.read(campaign_address);
+            let caller: ContractAddress = get_caller_address();
+
+            assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
+
+            let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
+            assert(amount <= available_balance, INSUFFICIENT_BALANCE);
+
+            let token_address = self.erc20_token.read();
+            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+            let transfer_result = token_dispatcher.transfer(caller, amount);
+            assert!(transfer_result, "Transfer failed");
+            self.withdrawal_balance.write(campaign_address, available_balance - amount);
         }
 
         // *************************************************************************
