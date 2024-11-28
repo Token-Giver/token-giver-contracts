@@ -56,16 +56,6 @@ mod TokengiverCampaign {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
-        Withdrawal: Withdrawal,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct Withdrawal {
-        #[key]
-        campaign_address: ContractAddress,
-        #[key]
-        recipient: ContractAddress,
-        amount: u256,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -176,7 +166,6 @@ mod TokengiverCampaign {
             let transfer_result = token_dispatcher.transfer(caller, amount);
             assert!(transfer_result, "Transfer failed");
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
-            self.emit(Withdrawal { campaign_address, recipient: caller, amount });
         }
 
         // *************************************************************************
