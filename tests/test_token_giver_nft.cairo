@@ -27,6 +27,18 @@ fn __setup__() -> ContractAddress {
     return (nft_contract_address);
 }
 
+fn deploy_campaign_contract() -> ContractAddress {
+    let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
+
+    let mut constructor_calldata: Array<felt252> = ArrayTrait::new();
+    nft_class_hash.serialize(ref constructor_calldata);
+
+    let contract = declare("TokengiverCampaign").unwrap().contract_class();
+    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
+
+    contract_address
+}
+
 
 // #[test]
 // fn test_metadata() {
