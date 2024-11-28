@@ -43,7 +43,7 @@ mod TokengiverCampaign {
         donations: Map<ContractAddress, u256>,
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<ContractAddress, DonationDetails>,
-        erc20_token: ContractAddress,
+        strk_address: ContractAddress,
     }
 
     // *************************************************************************
@@ -77,6 +77,14 @@ mod TokengiverCampaign {
     }
 
     // *************************************************************************
+    //                              CONSTRUCTOR
+    // *************************************************************************
+    #[constructor]
+    fn constructor(ref self: ContractState, strk_address: ContractAddress) {
+        self.strk_address.write(strk_address);
+    }
+
+    // *************************************************************************
     //                            EXTERNAL FUNCTIONS
     // *************************************************************************
     #[external(v0)]
@@ -97,15 +105,20 @@ mod TokengiverCampaign {
             }
                 .get_user_token_id(recipient);
 
+            println!("step: {}", 1);
+
             let campaign_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
             }
                 .create_account(
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
+
+            println!("step: {}", 2);
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
+            println!("step: {}", 4);
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
@@ -209,7 +222,7 @@ mod TokengiverCampaign {
         ) {
             let donor = get_caller_address();
 
-            let token_address = self.erc20_token.read();
+            let token_address = self.strk_address.read();
 
             IERC20Dispatcher { contract_address: token_address }
                 .transfer_from(donor, campaign_address, amount);
