@@ -44,7 +44,6 @@ mod TokengiverCampaign {
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress, // STRerc20 address
-        erc20_token: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
     }
 
@@ -56,6 +55,7 @@ mod TokengiverCampaign {
     pub enum Event {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
+        DeployedTokenGiverNFT: DeployedTokenGiverNFT,
         Withdrawal: Withdrawal,
     }
 
@@ -66,7 +66,6 @@ mod TokengiverCampaign {
         #[key]
         recipient: ContractAddress,
         amount: u256,
-        DeployedTokenGiverNFT: DeployedTokenGiverNFT,
     }
 
     #[derive(Drop, starknet::Event)]

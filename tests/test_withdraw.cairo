@@ -8,14 +8,9 @@ use core::traits::{TryInto, Into};
 use starknet::{ContractAddress};
 
 // Import ERC20 related dispatchers
-use openzeppelin::token::erc20::interface::{
-    IERC20Dispatcher, 
-    IERC20DispatcherTrait
-};
+use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
-use tokengiver::interfaces::ICampaign::{
-    ICampaignDispatcher, ICampaignDispatcherTrait
-};
+use tokengiver::interfaces::ICampaign::{ICampaignDispatcher, ICampaignDispatcherTrait};
 use tokengiver::interfaces::ITokenGiverNft::{
     ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
 };
@@ -25,7 +20,8 @@ const ADMIN: felt252 = 'ADMIN';
 const USER_ONE: felt252 = 'BOB';
 const USER_TWO: felt252 = 'JAMES';
 const REGISTRY_HASH: felt252 = 0x23a6d289a1e5067d905e195056c322381a78a3bc9ab3b0480f542fad87cc580;
-const IMPLEMENTATION_HASH: felt252 = 0x29d2a1b11dd97289e18042502f11356133a2201dd19e716813fb01fbee9e9a4;
+const IMPLEMENTATION_HASH: felt252 =
+    0x29d2a1b11dd97289e18042502f11356133a2201dd19e716813fb01fbee9e9a4;
 
 fn deploy_util(contract_name: ByteArray, constructor_calldata: Array<felt252>) -> ContractAddress {
     let contract = declare(contract_name).unwrap().contract_class();
@@ -51,23 +47,23 @@ fn test_withdrawal_flow() {
 
     // Deploy ERC20 token
     let mut constructor_calldata = array![
-        'MyToken',       // name
-        'MTK',           // symbol
-        18,              // decimals
-        1000000,         // initial supply
-        ADMIN.try_into().unwrap()  // initial owner/minter
+        'MyToken', // name
+        'MTK', // symbol
+        18, // decimals
+        1000000, // initial supply
+        ADMIN.try_into().unwrap() // initial owner/minter
     ];
-    let (token_address, _) = contract_class.deploy(@constructor_calldata).expect('Failed to deploy ERC20');
+    let (token_address, _) = contract_class
+        .deploy(@constructor_calldata)
+        .expect('Failed to deploy ERC20');
 
     // Use predefined class hashes for registry and implementation
-    let registry_hash: felt252 = REGISTRY_HASH;
-    let implementation_hash: felt252 = IMPLEMENTATION_HASH;
+    let registry_hash: felt252 = 0x23a6d289a1e5067d905e195056c322381a78a3bc9ab3b0480f542fad87cc580;
+    let implementation_hash: felt252 =
+        0x29d2a1b11dd97289e18042502f11356133a2201dd19e716813fb01fbee9e9a4;
 
     // Deploy Campaign contract
-    let campaign_contract_address = deploy_util(
-        "TokengiverCampaign", 
-        array![token_address.into()]
-    );
+    let campaign_contract_address = deploy_util("TokengiverCampaign", array![token_address.into()]);
 
     let nft_contract_address = __setupNft__();
 
@@ -85,13 +81,11 @@ fn test_withdrawal_flow() {
 
     // Create campaign
     start_cheat_caller_address(campaign_contract_address, recipient);
-    let created_campaign_address = CampaignDispatcher.create_campaign(
-        nft_contract_address,
-        registry_hash,
-        implementation_hash,
-        123,  // salt
-        recipient
-    );
+    let created_campaign_address = CampaignDispatcher
+        .create_campaign(
+            nft_contract_address, registry_hash, implementation_hash, 123, // salt
+             recipient
+        );
     stop_cheat_caller_address(campaign_contract_address);
 
     // Pre-fund the campaign directly
