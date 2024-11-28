@@ -105,8 +105,6 @@ mod TokengiverCampaign {
             }
                 .get_user_token_id(recipient);
 
-            println!("step: {}", 1);
-
             let campaign_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
             }
@@ -114,11 +112,10 @@ mod TokengiverCampaign {
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
 
-            println!("step: {}", 2);
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
-            println!("step: {}", 4);
+
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
