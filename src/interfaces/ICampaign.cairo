@@ -20,7 +20,7 @@ pub trait ICampaign<TState> {
     fn set_available_withdrawal(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn set_donations(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn donate(ref self: TState, campaign_address: ContractAddress, amount: u256, token_id: u256);
-
+    fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
 
     // Getters
     fn get_campaign_metadata(self: @TState, campaign_address: ContractAddress) -> ByteArray;
