@@ -26,7 +26,7 @@ pub trait IRegistry<TContractState> {
         token_id: u256,
         salt: felt252
     ) -> ContractAddress;
-    fn total_deployed_accounts(
-        self: @TContractState, token_contract: ContractAddress, token_id: u256
-    ) -> u8;
+    // fn total_deployed_accounts(
+    //     self: @TContractState, token_contract: ContractAddress, token_id: u256
+    // ) -> u8;
 }

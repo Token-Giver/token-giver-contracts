@@ -8,8 +8,9 @@ mod TokengiverCampaign {
     use core::traits::TryInto;
     //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp,
-        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
+        ContractAddress, get_caller_address, get_block_timestamp, SyscallResultTrait,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess},
+        syscalls::{library_call_syscall}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
@@ -22,6 +23,8 @@ mod TokengiverCampaign {
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+
+    // const REGISTRY_CLASS_HASH: felt252 = 0x46163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0;
 
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
@@ -100,6 +103,7 @@ mod TokengiverCampaign {
             let count: u16 = self.count.read() + 1;
             ITokenGiverNftDispatcher { contract_address: token_giverNft_contract_address }
                 .mint_token_giver_nft(recipient);
+
             let token_id = ITokenGiverNftDispatcher {
                 contract_address: token_giverNft_contract_address
             }
@@ -107,10 +111,21 @@ mod TokengiverCampaign {
 
             let campaign_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
-            }
-                .create_account(
+            }.create_account(
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
+
+            // let mut call_data: Array<felt252> = array![];
+            // Serde::serialize(@implementation_hash, ref call_data);
+            // Serde::serialize(@token_giverNft_contract_address, ref call_data);
+            // Serde::serialize(@token_id, ref call_data);
+            // Serde::serialize(@salt, ref call_data);
+
+            // let mut res = library_call_syscall(registry_hash.try_into().unwrap(), selector!("create_account"), call_data.span()).unwrap_syscall();
+
+            // let campaign_address = Serde::<ContractAddress>::deserialize(ref res).unwrap();
+
+
 
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
