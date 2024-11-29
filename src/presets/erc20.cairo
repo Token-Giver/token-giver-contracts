@@ -25,14 +25,11 @@ mod MyToken {
     }
 
     #[constructor]
-    fn constructor(
-        ref self: ContractState,
-        recipient: ContractAddress,
-    ) {
-    let name: ByteArray = "My Token";
+    fn constructor(ref self: ContractState, recipient: ContractAddress,) {
+        let name: ByteArray = "My Token";
         let symbol: ByteArray = "MYT";
         let initial_supply = 100_000_000_u256;
-    
+
         self.erc20.initializer(name, symbol);
         self.mint(recipient, initial_supply);
     }
