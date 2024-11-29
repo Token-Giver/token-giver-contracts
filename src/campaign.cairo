@@ -108,8 +108,10 @@ mod TokengiverCampaign {
         ) -> ContractAddress {
             let caller = get_caller_address();
             let count: u16 = self.count.read() + 1;
+
             let token_giverNft_contract_address = self
                 .deploy_token_giver_nft(self.token_giver_nft_class_hash.read(), caller);
+
             let token_id = ITokenGiverNftDispatcher {
                 contract_address: token_giverNft_contract_address
             }
@@ -121,9 +123,11 @@ mod TokengiverCampaign {
                 .create_account(
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
+
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
+
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
@@ -136,6 +140,7 @@ mod TokengiverCampaign {
                         token_giverNft_contract_address
                     }
                 );
+
             campaign_address
         }
 
@@ -287,8 +292,7 @@ mod TokengiverCampaign {
         fn deploy_token_giver_nft(
             ref self: ContractState, token_giver_nft_class_hash: ClassHash, admin: ContractAddress
         ) -> ContractAddress {
-            let mut constructor_calldata = array![];
-            admin.serialize(ref constructor_calldata);
+            let mut constructor_calldata = array![admin.into()];
 
             let (token_giver_nft_address, _) = deploy_syscall(
                 token_giver_nft_class_hash,

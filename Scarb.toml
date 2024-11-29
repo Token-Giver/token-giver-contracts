@@ -27,6 +27,7 @@ sierra = true
 test = "snforge test"
 
 [[tool.snforge.fork]]
-name = "Testnet"
+name = "SEPOLIA_LATEST"
 url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
-block_id.number = "325081"
+block_id.tag = "latest"
+# block_id.number = "325081"
