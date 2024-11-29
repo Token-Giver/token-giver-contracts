@@ -106,9 +106,12 @@ mod TokengiverCampaign {
             salt: felt252,
             recipient: ContractAddress
         ) -> ContractAddress {
+            let caller = get_caller_address();
             let count: u16 = self.count.read() + 1;
+
             let token_giverNft_contract_address = self
-                .deploy_token_giver_nft(self.token_giver_nft_class_hash.read(), count.into());
+                .deploy_token_giver_nft(self.token_giver_nft_class_hash.read(), caller);
+
             let token_id = ITokenGiverNftDispatcher {
                 contract_address: token_giverNft_contract_address
             }
@@ -120,9 +123,11 @@ mod TokengiverCampaign {
                 .create_account(
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
+
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
+
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
@@ -135,6 +140,7 @@ mod TokengiverCampaign {
                         token_giverNft_contract_address
                     }
                 );
+
             campaign_address
         }
 
@@ -284,11 +290,9 @@ mod TokengiverCampaign {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         fn deploy_token_giver_nft(
-            ref self: ContractState, token_giver_nft_class_hash: ClassHash, campaign_id: u256
+            ref self: ContractState, token_giver_nft_class_hash: ClassHash, admin: ContractAddress
         ) -> ContractAddress {
-            let mut constructor_calldata: Array<felt252> = array![
-                campaign_id.low.into(), campaign_id.high.into()
-            ];
+            let mut constructor_calldata = array![admin.into()];
 
             let (token_giver_nft_address, _) = deploy_syscall(
                 token_giver_nft_class_hash,
@@ -298,14 +302,14 @@ mod TokengiverCampaign {
             )
                 .unwrap();
 
-            self
-                .emit(
-                    DeployedTokenGiverNFT {
-                        campaign_id: campaign_id,
-                        token_giver_nft_contract_address: token_giver_nft_address,
-                        block_timestamp: get_block_timestamp()
-                    }
-                );
+            // self
+            //     .emit(
+            //         DeployedTokenGiverNFT {
+            //             campaign_id: campaign_id,
+            //             token_giver_nft_contract_address: token_giver_nft_address,
+            //             block_timestamp: get_block_timestamp()
+            //         }
+            //     );
             token_giver_nft_address
         }
     }

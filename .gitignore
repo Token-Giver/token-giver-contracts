@@ -1,1 +1,4 @@
+.snfoundry_cache
 target
+.DS_Store
+Scarb.lock
