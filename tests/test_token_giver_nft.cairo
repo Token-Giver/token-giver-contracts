@@ -71,7 +71,6 @@ fn deploy_campaign_contract() -> ContractAddress {
 //         );
 // }
 
-
 // #[test]
 // fn test_metadata() {
 //     let nft_contract_address = __setup__();
