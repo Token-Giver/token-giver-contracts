@@ -8,7 +8,6 @@ use tokengiver::base::types::Campaign;
 pub trait ICampaign<TState> {
     fn create_campaign(
         ref self: TState,
-        token_giverNft_contract_address: ContractAddress,
         registry_hash: felt252,
         implementation_hash: felt252,
         salt: felt252,
@@ -21,6 +20,7 @@ pub trait ICampaign<TState> {
     fn set_available_withdrawal(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn set_donations(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn donate(ref self: TState, campaign_address: ContractAddress, amount: u256, token_id: u256);
+    fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
 
 
     // Getters

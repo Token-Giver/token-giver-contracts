@@ -6,11 +6,10 @@ mod TokengiverCampaign {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    //  use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
     use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp, SyscallResultTrait,
-        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess},
-        syscalls::{library_call_syscall}
+        ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
+        syscalls::deploy_syscall, SyscallResultTrait,
+        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
@@ -21,7 +20,7 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::NOT_CAMPAIGN_OWNER;
+    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
@@ -44,6 +43,7 @@ mod TokengiverCampaign {
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<ContractAddress, DonationDetails>,
         strk_address: ContractAddress,
+        token_giver_nft_class_hash: ClassHash,
     }
 
     // *************************************************************************
@@ -54,6 +54,7 @@ mod TokengiverCampaign {
     pub enum Event {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
+        DeployedTokenGiverNFT: DeployedTokenGiverNFT,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -63,6 +64,14 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+        token_giverNft_contract_address: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DeployedTokenGiverNFT {
+        pub campaign_id: u256,
+        pub token_giver_nft_contract_address: ContractAddress,
+        pub block_timestamp: u64,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -80,47 +89,56 @@ mod TokengiverCampaign {
     //                              CONSTRUCTOR
     // *************************************************************************
     #[constructor]
-    fn constructor(ref self: ContractState, strk_address: ContractAddress) {
+    fn constructor(
+        ref self: ContractState,
+        token_giver_nft_class_hash: ClassHash,
+        strk_address: ContractAddress
+    ) {
+        self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
         self.strk_address.write(strk_address);
     }
 
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
     // *************************************************************************
-    #[external(v0)]
+    #[abi(embed_v0)]
     impl CampaignImpl of ICampaign<ContractState> {
         fn create_campaign(
             ref self: ContractState,
-            token_giverNft_contract_address: ContractAddress,
             registry_hash: felt252,
             implementation_hash: felt252,
             salt: felt252,
             recipient: ContractAddress
         ) -> ContractAddress {
             let count: u16 = self.count.read() + 1;
-            ITokenGiverNftDispatcher { contract_address: token_giverNft_contract_address }
-                .mint_token_giver_nft(recipient);
-
+            let token_Nft_address = self.token_giver_nft_class_hash.read();
+            let token_giverNft_contract_address = self
+                .deploy_token_giver_nft(token_Nft_address, count.into());
             let token_id = ITokenGiverNftDispatcher {
                 contract_address: token_giverNft_contract_address
             }
                 .get_user_token_id(recipient);
-
             let campaign_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
             }
                 .create_account(
                     implementation_hash, token_giverNft_contract_address, token_id, salt
                 );
-
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: recipient, metadata_URI: "",
             };
-
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
-            self.emit(CreateCampaign { owner: recipient, campaign_address, token_id });
+            self
+                .emit(
+                    CreateCampaign {
+                        owner: recipient,
+                        campaign_address,
+                        token_id,
+                        token_giverNft_contract_address
+                    }
+                );
             campaign_address
         }
 
@@ -151,6 +169,23 @@ mod TokengiverCampaign {
             ref self: ContractState, campaign_address: ContractAddress, amount: u256
         ) {
             self.withdrawal_balance.write(campaign_address, amount);
+        }
+
+        // withdraw function
+        fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
+            let campaign: Campaign = self.campaign.read(campaign_address);
+            let caller: ContractAddress = get_caller_address();
+
+            assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
+
+            let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
+            assert(amount <= available_balance, INSUFFICIENT_BALANCE);
+
+            let token_address = self.strk_address.read();
+            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+            let transfer_result = token_dispatcher.transfer(caller, amount);
+            assert!(transfer_result, "Transfer failed");
+            self.withdrawal_balance.write(campaign_address, available_balance - amount);
         }
 
         // *************************************************************************
@@ -247,6 +282,31 @@ mod TokengiverCampaign {
                         block_timestamp: get_block_timestamp(),
                     }
                 );
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn deploy_token_giver_nft(
+            ref self: ContractState, token_giver_nft_class_hash: ClassHash, campaign_id: u16
+        ) -> ContractAddress {
+            let mut constructor_calldata = array![];
+            campaign_id.serialize(ref constructor_calldata);
+
+            let (token_giver_nft_address, _) = deploy_syscall(
+                token_giver_nft_class_hash, 'salt'.into(), constructor_calldata.span(), false
+            )
+                .unwrap();
+
+            self
+                .emit(
+                    DeployedTokenGiverNFT {
+                        campaign_id: campaign_id.into(),
+                        token_giver_nft_contract_address: token_giver_nft_address,
+                        block_timestamp: get_block_timestamp()
+                    }
+                );
+            token_giver_nft_address
         }
     }
 }

@@ -1,6 +1,6 @@
 use snforge_std::{
     declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
+    DeclareResultTrait, spy_events, EventSpyAssertionsTrait, get_class_hash
 };
 
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -38,8 +38,10 @@ const ADMIN: felt252 = 'ADMIN';
 fn __setup__() -> (ContractAddress, ContractAddress) {
     let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
     let strk_address = deploy_erc20();
+    let nft_class_hash = __declare_token_giver_NFT__();
 
     let mut calldata = array![];
+    nft_class_hash.serialize(ref calldata);
     strk_address.serialize(ref calldata);
 
     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
@@ -48,14 +50,8 @@ fn __setup__() -> (ContractAddress, ContractAddress) {
 }
 
 
-fn __setup_token_giver_NFT__() -> ContractAddress {
-    // deploy  events
-    let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
-
-    let mut events_constructor_calldata: Array<felt252> = array![ADMIN];
-    let (nft_contract_address, _) = nft_class_hash.deploy(@events_constructor_calldata).unwrap();
-
-    return (nft_contract_address);
+fn __declare_token_giver_NFT__() -> ClassHash {
+    *declare("TokenGiverNFT").unwrap().contract_class().class_hash
 }
 
 fn deploy_erc20() -> ContractAddress {
@@ -73,24 +69,22 @@ fn deploy_erc20() -> ContractAddress {
 #[fork("Mainnet")]
 fn test_donate() {
     let (token_giver_address, strk_address) = __setup__();
-    let token_giverNft_contract_address = __setup_token_giver_NFT__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
-
     let mut spy = spy_events();
+
+
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
+
+
     let campaign_address = token_giver
-        .create_campaign(
-            token_giverNft_contract_address,
-            REGISTRY_HASH(),
-            IMPLEMENTATION_HASH(),
-            SALT(),
-            RECIPIENT()
-        );
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
+
     stop_cheat_caller_address(token_giver_address);
+
 
     /// Transfer STRK to Donor
     start_cheat_caller_address(strk_address, OWNER());
@@ -99,19 +93,23 @@ fn test_donate() {
     assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
     stop_cheat_caller_address(strk_address);
 
+
     // approve allowance
     start_cheat_caller_address(strk_address, DONOR());
     strk_dispatcher.approve(token_giver_address, amount);
     stop_cheat_caller_address(strk_address);
+
 
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
     token_giver.donate(campaign_address, amount, random_id);
     stop_cheat_caller_address(token_giver_address);
 
+
     assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
+
 
     let expected_event = Event::DonationCreated(
         DonationCreated {
@@ -122,5 +120,6 @@ fn test_donate() {
             block_timestamp: get_block_timestamp(),
         }
     );
+
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }

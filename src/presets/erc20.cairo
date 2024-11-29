@@ -31,13 +31,6 @@ mod MyToken {
         let initial_supply = 100_000_000_u256;
 
         self.erc20.initializer(name, symbol);
-        self.mint(recipient, initial_supply);
-    }
-
-    #[generate_trait]
-    impl internalImpl of InternalTrait {
-        fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) {
-            self.erc20.mint(recipient, amount);
-        }
+        self.erc20.mint(recipient, initial_supply);
     }
 }
