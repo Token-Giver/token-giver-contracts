@@ -28,11 +28,11 @@ test = "snforge test"
 
 [[tool.snforge.fork]]
 name = "SEPOLIA_LATEST"
-url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/_hGq2Nj1q1p_NW47h6OeqXsi1Shtunzi"
 block_id.tag = "latest"
 # block_id.number = "325081"
 
 [[tool.snforge.fork]]
 name = "Mainnet"
-url = "https://starknet-mainnet.public.blastapi.io/rpc/v0_7"
+url = "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/_hGq2Nj1q1p_NW47h6OeqXsi1Shtunzi"
 block_id.number = "631894"
