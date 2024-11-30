@@ -8,7 +8,7 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
-use tokengiver::campaign::TokengiverCampaign::{Event, DonationCreated};
+use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade};
 
 fn REGISTRY_HASH() -> felt252 {
     0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0.try_into().unwrap()
@@ -105,9 +105,44 @@ fn test_donate() {
     assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
+}
 
-    let expected_event = Event::DonationCreated(
-        DonationCreated {
+
+#[test]
+#[fork("Mainnet")]
+fn test_donate_event_emission() {
+    let (token_giver_address, strk_address) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+    let random_id = 1;
+    let mut spy = spy_events();
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 2000000; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
+    stop_cheat_caller_address(strk_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    // donate
+    start_cheat_caller_address(token_giver_address, DONOR());
+    token_giver.donate(campaign_address, amount, random_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    let expected_event = Event::DonationMade(
+        DonationMade {
             campaign_id: random_id,
             donor_address: DONOR(),
             amount: amount,
