@@ -111,10 +111,9 @@ mod TokengiverCampaign {
         ) -> ContractAddress {
             let caller = get_caller_address();
             let nft_address = self.token_giver_nft_address.read();
-
-            /// mint token giver NFT
             let token_giver_nft = ITokenGiverNftDispatcher { contract_address: nft_address };
 
+            /// mint token giver NFT
             let token_id = token_giver_nft.mint_token_giver_nft(caller);
 
             /// create TBA account
@@ -124,6 +123,7 @@ mod TokengiverCampaign {
             }
                 .create_account(implementation_hash, nft_address, token_id, salt);
 
+            /// create campaign
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: caller, metadata_URI: "", token_id,
             };
