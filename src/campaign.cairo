@@ -185,7 +185,7 @@ mod TokengiverCampaign {
 
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
-            let transfer_result = token_dispatcher.transfer(caller, amount);
+            let transfer_result = token_dispatcher.transfer_from(campaign_address, caller, amount);
             assert!(transfer_result, "Transfer failed");
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
         }
