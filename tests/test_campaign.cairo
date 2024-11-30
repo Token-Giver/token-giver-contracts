@@ -38,10 +38,10 @@ const ADMIN: felt252 = 'ADMIN';
 fn __setup__() -> (ContractAddress, ContractAddress) {
     let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
     let strk_address = deploy_erc20();
-    let nft_class_hash = __declare_token_giver_NFT__();
+    let nft_address = __deploy_token_giver_NFT__();
 
     let mut calldata = array![];
-    nft_class_hash.serialize(ref calldata);
+    nft_address.serialize(ref calldata);
     strk_address.serialize(ref calldata);
 
     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
@@ -49,9 +49,13 @@ fn __setup__() -> (ContractAddress, ContractAddress) {
     (contract_address, strk_address)
 }
 
+fn __deploy_token_giver_NFT__() -> ContractAddress {
+    let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
 
-fn __declare_token_giver_NFT__() -> ClassHash {
-    *declare("TokenGiverNFT").unwrap().contract_class().class_hash
+    let mut events_constructor_calldata: Array<felt252> = array![ADMIN];
+    let (nft_contract_address, _) = nft_class_hash.deploy(@events_constructor_calldata).unwrap();
+
+    return (nft_contract_address);
 }
 
 fn deploy_erc20() -> ContractAddress {
@@ -74,17 +78,12 @@ fn test_donate() {
     let random_id = 1;
     let mut spy = spy_events();
 
-
-
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
-
-
     let campaign_address = token_giver
-        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
 
     stop_cheat_caller_address(token_giver_address);
-
 
     /// Transfer STRK to Donor
     start_cheat_caller_address(strk_address, OWNER());
@@ -93,23 +92,19 @@ fn test_donate() {
     assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
     stop_cheat_caller_address(strk_address);
 
-
     // approve allowance
     start_cheat_caller_address(strk_address, DONOR());
     strk_dispatcher.approve(token_giver_address, amount);
     stop_cheat_caller_address(strk_address);
-
 
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
     token_giver.donate(campaign_address, amount, random_id);
     stop_cheat_caller_address(token_giver_address);
 
-
     assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
-
 
     let expected_event = Event::DonationCreated(
         DonationCreated {

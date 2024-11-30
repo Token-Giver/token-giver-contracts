@@ -75,7 +75,7 @@ pub mod TokenGiverNFT {
         //                            EXTERNAL
         // *************************************************************************
 
-        fn mint_token_giver_nft(ref self: ContractState, address: ContractAddress) {
+        fn mint_token_giver_nft(ref self: ContractState, address: ContractAddress) -> u256 {
             let mut token_id = self.last_minted_id.read() + 1;
             self.erc721.mint(address, token_id);
             let timestamp: u64 = get_block_timestamp();
@@ -83,6 +83,7 @@ pub mod TokenGiverNFT {
             self.user_token_id.write(address, token_id);
             self.last_minted_id.write(token_id);
             self.mint_timestamp.write(token_id, timestamp);
+            token_id
         }
 
 

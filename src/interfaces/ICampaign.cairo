@@ -7,11 +7,7 @@ use tokengiver::base::types::Campaign;
 #[starknet::interface]
 pub trait ICampaign<TState> {
     fn create_campaign(
-        ref self: TState,
-        registry_hash: felt252,
-        implementation_hash: felt252,
-        salt: felt252,
-        recipient: ContractAddress
+        ref self: TState, registry_hash: felt252, implementation_hash: felt252, salt: felt252,
     ) -> ContractAddress;
     fn set_campaign_metadata_uri(
         ref self: TState, campaign_address: ContractAddress, metadata_uri: ByteArray
