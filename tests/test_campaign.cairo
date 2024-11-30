@@ -153,3 +153,49 @@ fn test_donate_event_emission() {
 
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
+
+#[test]
+#[fork("Mainnet")]
+fn test_withdraw() {
+    let (token_giver_address, strk_address) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+    let random_id = 1;
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 2000000; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) == amount, 'transfer failed');
+    stop_cheat_caller_address(strk_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    // donate
+    start_cheat_caller_address(token_giver_address, DONOR());
+    token_giver.donate(campaign_address, amount, random_id);
+    stop_cheat_caller_address(token_giver_address);
+    assert(strk_dispatcher.balance_of(campaign_address) == amount, 'donation failed');
+
+    // Campaign address (TBA) -> approves token giver contract
+    start_cheat_caller_address(strk_address, campaign_address);
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    // Campaign creator (RECIPIENT()) -> withdraws donations
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    token_giver.withdraw(campaign_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(strk_dispatcher.balance_of(RECIPIENT()) == amount, 'withdrawal failed');
+    assert(token_giver.get_available_withdrawal(campaign_address) == 0, 'withdrawal failed');
+}
