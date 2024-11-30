@@ -20,7 +20,9 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED};
+    use tokengiver::base::errors::Errors::{
+        NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED
+    };
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
