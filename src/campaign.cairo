@@ -127,6 +127,7 @@ mod TokengiverCampaign {
             let new_campaign = Campaign {
                 campaign_address, campaign_owner: caller, metadata_URI: "", token_id,
             };
+
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
@@ -139,6 +140,7 @@ mod TokengiverCampaign {
                         token_giver_nft_address: nft_address
                     }
                 );
+
             campaign_address
         }
 
