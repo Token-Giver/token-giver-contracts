@@ -53,7 +53,7 @@ mod TokengiverCampaign {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         CreateCampaign: CreateCampaign,
-        DonationCreated: DonationCreated,
+        DonationMade: DonationMade,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
     }
 
@@ -75,7 +75,7 @@ mod TokengiverCampaign {
     }
 
     #[derive(Drop, starknet::Event)]
-    pub struct DonationCreated {
+    pub struct DonationMade {
         #[key]
         campaign_id: u256,
         #[key]
@@ -276,7 +276,7 @@ mod TokengiverCampaign {
 
             self
                 .emit(
-                    DonationCreated {
+                    DonationMade {
                         campaign_id: token_id,
                         donor_address: donor,
                         amount: amount,
