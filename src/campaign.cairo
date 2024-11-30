@@ -20,7 +20,7 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
+    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
@@ -186,7 +186,7 @@ mod TokengiverCampaign {
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
             let transfer_result = token_dispatcher.transfer_from(campaign_address, caller, amount);
-            assert!(transfer_result, "Transfer failed");
+            assert(transfer_result, TRANSFER_FAILED);
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
         }
 
