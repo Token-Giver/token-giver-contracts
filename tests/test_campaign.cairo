@@ -8,7 +8,7 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
-use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade};
+use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade, WithdrawalMade};
 
 fn REGISTRY_HASH() -> felt252 {
     0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0.try_into().unwrap()
@@ -141,6 +141,7 @@ fn test_donate_event_emission() {
     token_giver.donate(campaign_address, amount, random_id);
     stop_cheat_caller_address(token_giver_address);
 
+    // test DonationMade event emission
     let expected_event = Event::DonationMade(
         DonationMade {
             campaign_id: random_id,
@@ -198,4 +199,62 @@ fn test_withdraw() {
 
     assert(strk_dispatcher.balance_of(RECIPIENT()) == amount, 'withdrawal failed');
     assert(token_giver.get_available_withdrawal(campaign_address) == 0, 'withdrawal failed');
+}
+
+#[test]
+#[fork("Mainnet")]
+fn test_withdraw_event_emission() {
+    let (token_giver_address, strk_address) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+    let random_id = 1;
+    let mut spy = spy_events();
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 2000000; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) == amount, 'transfer failed');
+    stop_cheat_caller_address(strk_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    // donate
+    start_cheat_caller_address(token_giver_address, DONOR());
+    token_giver.donate(campaign_address, amount, random_id);
+    stop_cheat_caller_address(token_giver_address);
+    assert(strk_dispatcher.balance_of(campaign_address) == amount, 'donation failed');
+
+    // Campaign address (TBA) -> approves token giver contract
+    start_cheat_caller_address(strk_address, campaign_address);
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    // Campaign creator (RECIPIENT()) -> withdraws donations
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    token_giver.withdraw(campaign_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(strk_dispatcher.balance_of(RECIPIENT()) == amount, 'withdrawal failed');
+    assert(token_giver.get_available_withdrawal(campaign_address) == 0, 'withdrawal failed');
+
+    let expected_event = Event::WithdrawalMade(
+        WithdrawalMade {
+            campaign_address: campaign_address,
+            recipient: RECIPIENT(),
+            amount: amount,
+            block_timestamp: get_block_timestamp(),
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
