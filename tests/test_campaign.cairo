@@ -257,7 +257,6 @@ fn test_create_campaign() {
 //     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 // }
 
-
 #[test]
 #[fork("Mainnet")]
 fn test_withdraw_event_emission() {
