@@ -8,7 +8,7 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
-use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade, WithdrawalMade};
+use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade, WithdrawalMade, CreateCampaign};
 
 fn REGISTRY_HASH() -> felt252 {
     0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0.try_into().unwrap()
@@ -200,6 +200,63 @@ fn test_withdraw() {
     assert(strk_dispatcher.balance_of(RECIPIENT()) == amount, 'withdrawal failed');
     assert(token_giver.get_available_withdrawal(campaign_address) == 0, 'withdrawal failed');
 }
+
+
+#[test]
+#[fork("Mainnet")]
+fn test_create_campaign() {
+    let (token_giver_address, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    // create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let created_campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+
+    // get campagin
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign = token_giver.get_campaign(created_campaign_address);
+
+    let campaign_address = campaign.campaign_address;
+
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(created_campaign_address == campaign_address, 'create campaign failed');
+}
+
+
+#[test]
+#[fork("Mainnet")]
+fn test_create_campaign_event_emission() {
+    let (token_giver_address, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    // create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let created_campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+
+    // get campagin
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign = token_giver.get_campaign(created_campaign_address);
+
+    let campaign_address = campaign.campaign_address;
+    let campaign_owner = campaign.campaign_owner;
+    let token_id = campaign.token_id;
+
+    stop_cheat_caller_address(token_giver_address);
+    assert(created_campaign_address == campaign.campaign_address, 'create campaign failed');
+
+    let expected_event = Event::CreateCampaign(
+        CreateCampaign {
+            owner: campagin_owner, campaign_address: campaign_address, token_id: token_id,
+        }
+    );
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
 
 #[test]
 #[fork("Mainnet")]
