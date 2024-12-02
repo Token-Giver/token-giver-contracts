@@ -67,6 +67,7 @@ mod TokengiverCampaign {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+        token_giver_nft_address: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -143,7 +144,15 @@ mod TokengiverCampaign {
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
-            self.emit(CreateCampaign { owner: caller, campaign_address, token_id, });
+            self
+                .emit(
+                    CreateCampaign {
+                        owner: caller,
+                        campaign_address,
+                        token_id,
+                        token_giver_nft_address: nft_address
+                    }
+                );
 
             campaign_address
         }

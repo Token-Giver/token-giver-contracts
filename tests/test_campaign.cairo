@@ -35,7 +35,7 @@ fn OWNER() -> ContractAddress {
 
 const ADMIN: felt252 = 'ADMIN';
 
-fn __setup__() -> (ContractAddress, ContractAddress) {
+fn __setup__() -> (ContractAddress, ContractAddress, ContractAddress) {
     let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
     let strk_address = deploy_erc20();
     let nft_address = __deploy_token_giver_NFT__();
@@ -46,7 +46,7 @@ fn __setup__() -> (ContractAddress, ContractAddress) {
 
     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
 
-    (contract_address, strk_address)
+    (contract_address, strk_address, nft_address)
 }
 
 fn __deploy_token_giver_NFT__() -> ContractAddress {
@@ -72,7 +72,7 @@ fn deploy_erc20() -> ContractAddress {
 #[test]
 #[fork("Mainnet")]
 fn test_donate() {
-    let (token_giver_address, strk_address) = __setup__();
+    let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
@@ -111,7 +111,7 @@ fn test_donate() {
 #[test]
 #[fork("Mainnet")]
 fn test_donate_event_emission() {
-    let (token_giver_address, strk_address) = __setup__();
+    let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
@@ -158,7 +158,7 @@ fn test_donate_event_emission() {
 #[test]
 #[fork("Mainnet")]
 fn test_withdraw() {
-    let (token_giver_address, strk_address) = __setup__();
+    let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
@@ -205,7 +205,7 @@ fn test_withdraw() {
 #[test]
 #[fork("Mainnet")]
 fn test_create_campaign() {
-    let (token_giver_address, _) = __setup__();
+    let (token_giver_address, _, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
 
     // create campaign
@@ -214,23 +214,21 @@ fn test_create_campaign() {
         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
     stop_cheat_caller_address(token_giver_address);
 
-    // get campagin
+    // // get campagin
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign = token_giver.get_campaign(created_campaign_address);
-
-    let campaign_address = campaign.campaign_address;
-
     stop_cheat_caller_address(token_giver_address);
 
-    assert(created_campaign_address == campaign_address, 'create campaign failed');
+    assert(created_campaign_address == campaign.campaign_address, 'create campaign failed');
 }
 
 
 #[test]
 #[fork("Mainnet")]
 fn test_create_campaign_event_emission() {
-    let (token_giver_address, _) = __setup__();
+    let (token_giver_address, _, nft_address) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let mut spy = spy_events();
 
     // create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
@@ -242,25 +240,26 @@ fn test_create_campaign_event_emission() {
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign = token_giver.get_campaign(created_campaign_address);
 
-    let campaign_address = campaign.campaign_address;
-    let campaign_owner = campaign.campaign_owner;
-    let token_id = campaign.token_id;
-
     stop_cheat_caller_address(token_giver_address);
     assert(created_campaign_address == campaign.campaign_address, 'create campaign failed');
 
     let expected_event = Event::CreateCampaign(
         CreateCampaign {
-            owner: campagin_owner, campaign_address: campaign_address, token_id: token_id,
+            owner: campaign.campaign_owner,
+            campaign_address: campaign.campaign_address,
+            token_id: campaign.token_id,
+            token_giver_nft_address: nft_address
         }
     );
+
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
+
 
 #[test]
 #[fork("Mainnet")]
 fn test_withdraw_event_emission() {
-    let (token_giver_address, strk_address) = __setup__();
+    let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
