@@ -173,17 +173,9 @@ mod TokengiverCampaign {
         fn donate(
             ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
         ) {
-            println!("Riight here {}", 1);
             let donor = get_caller_address();
 
             let token_address = self.strk_address.read();
-
-            println!("Riight here {}", 2);
-
-            println!(
-                "Balance -------- {}",
-                IERC20Dispatcher { contract_address: token_address }.balance_of(donor)
-            );
 
             IERC20Dispatcher { contract_address: token_address }
                 .approve(get_contract_address(), amount);

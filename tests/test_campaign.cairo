@@ -101,7 +101,6 @@ fn test_donate() {
     strk_dispatcher.approve(token_giver_address, amount);
     stop_cheat_caller_address(strk_address);
 
-    println!("Donor balance: {}", strk_dispatcher.balance_of(DONOR()));
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
     token_giver.donate(campaign_address, amount, random_id);
