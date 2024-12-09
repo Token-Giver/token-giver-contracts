@@ -7,7 +7,7 @@ mod TokengiverCampaign {
     // *************************************************************************
     use core::traits::TryInto;
     use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
+        ContractAddress, get_caller_address, get_block_timestamp, ClassHash, get_contract_address,
         syscalls::deploy_syscall, SyscallResultTrait,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
@@ -170,6 +170,42 @@ mod TokengiverCampaign {
             self.campaign.write(campaign_address, campaign);
         }
 
+        fn donate(
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
+        ) {
+            let donor = get_caller_address();
+
+            let token_address = self.strk_address.read();
+
+            IERC20Dispatcher { contract_address: token_address }
+                .approve(get_contract_address(), amount);
+
+            IERC20Dispatcher { contract_address: token_address }
+                .transfer_from(donor, campaign_address, amount);
+
+            let prev_count = self.donation_count.read(campaign_address);
+            self.donation_count.write(campaign_address, prev_count + 1);
+
+            let prev_donations = self.donations.read(campaign_address);
+            self.donations.write(campaign_address, prev_donations + amount);
+
+            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
+            self.donation_details.write(donor, donation_details);
+
+            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
+            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
+
+            self
+                .emit(
+                    DonationMade {
+                        campaign_id: token_id,
+                        donor_address: donor,
+                        amount: amount,
+                        token_id,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
 
         fn set_donation_count(ref self: ContractState, campaign_address: ContractAddress) {
             let prev_count: u16 = self.donation_count.read(campaign_address);
@@ -178,12 +214,6 @@ mod TokengiverCampaign {
 
         fn set_donations(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             self.donations.write(campaign_address, amount);
-        }
-
-        fn set_available_withdrawal(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256
-        ) {
-            self.withdrawal_balance.write(campaign_address, amount);
         }
 
         // withdraw function
@@ -211,6 +241,12 @@ mod TokengiverCampaign {
                         block_timestamp: get_block_timestamp(),
                     }
                 );
+        }
+
+        fn set_available_withdrawal(
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256
+        ) {
+            self.withdrawal_balance.write(campaign_address, amount);
         }
 
         // *************************************************************************
@@ -273,40 +309,6 @@ mod TokengiverCampaign {
 
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
-        }
-
-        fn donate(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
-        ) {
-            let donor = get_caller_address();
-
-            let token_address = self.strk_address.read();
-
-            IERC20Dispatcher { contract_address: token_address }
-                .transfer_from(donor, campaign_address, amount);
-
-            let prev_count = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
-
-            let prev_donations = self.donations.read(campaign_address);
-            self.donations.write(campaign_address, prev_donations + amount);
-
-            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
-            self.donation_details.write(donor, donation_details);
-
-            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
-            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
-
-            self
-                .emit(
-                    DonationMade {
-                        campaign_id: token_id,
-                        donor_address: donor,
-                        amount: amount,
-                        token_id,
-                        block_timestamp: get_block_timestamp(),
-                    }
-                );
         }
     }
 }
