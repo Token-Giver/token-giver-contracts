@@ -21,6 +21,10 @@ fn DONOR() -> ContractAddress {
     'donor'.try_into().unwrap()
 }
 
+fn STRK_ADDR() -> ContractAddress {
+    0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d.try_into().unwrap()
+}
+
 fn SALT() -> felt252 {
     'salty'.try_into().unwrap()
 }
@@ -87,7 +91,7 @@ fn test_donate() {
 
     /// Transfer STRK to Donor
     start_cheat_caller_address(strk_address, OWNER());
-    let amount = 2000000; // 
+    let amount = 35; // 
     strk_dispatcher.transfer(DONOR(), amount);
     assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
     stop_cheat_caller_address(strk_address);
@@ -101,7 +105,6 @@ fn test_donate() {
     start_cheat_caller_address(token_giver_address, DONOR());
     token_giver.donate(campaign_address, amount, random_id);
     stop_cheat_caller_address(token_giver_address);
-
     assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
