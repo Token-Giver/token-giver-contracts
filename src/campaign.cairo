@@ -8,7 +8,7 @@ mod TokengiverCampaign {
     use core::traits::TryInto;
     use starknet::{
         ContractAddress, get_caller_address, get_block_timestamp, ClassHash, get_contract_address,
-        syscalls::deploy_syscall, SyscallResultTrait,
+        syscalls::deploy_syscall, SyscallResultTrait, syscalls, class_hash::class_hash_const,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
@@ -24,6 +24,19 @@ mod TokengiverCampaign {
         NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED
     };
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    /// Upgradeable
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     pub struct DonationDetails {
@@ -46,6 +59,10 @@ mod TokengiverCampaign {
         donation_details: Map<ContractAddress, DonationDetails>,
         strk_address: ContractAddress,
         token_giver_nft_address: ContractAddress,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
 
     // *************************************************************************
@@ -58,6 +75,10 @@ mod TokengiverCampaign {
         DonationMade: DonationMade,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
         WithdrawalMade: WithdrawalMade,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -107,8 +128,10 @@ mod TokengiverCampaign {
         token_giver_nft_address: ContractAddress,
         strk_address: ContractAddress
     ) {
+        let owner = get_caller_address();
         self.token_giver_nft_address.write(token_giver_nft_address);
         self.strk_address.write(strk_address);
+        self.ownable.initializer(owner);
     }
 
     // *************************************************************************
@@ -116,6 +139,13 @@ mod TokengiverCampaign {
     // *************************************************************************
     #[abi(embed_v0)]
     impl CampaignImpl of ICampaign<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            // This function can only be called by the owner
+            self.ownable.assert_only_owner();
+
+            // Replace the class hash upgrading the contract
+            self.upgradeable.upgrade(new_class_hash);
+        }
         fn create_campaign(
             ref self: ContractState,
             registry_hash: felt252,
