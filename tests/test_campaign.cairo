@@ -62,24 +62,6 @@ fn __deploy_token_giver_NFT__() -> ContractAddress {
     return (nft_contract_address);
 }
 
-
-fn test_upgradability() {
-    let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
-    let strk_address = deploy_erc20();
-    let nft_address = __deploy_token_giver_NFT__();
-
-    let mut calldata = array![];
-    nft_address.serialize(ref calldata);
-    strk_address.serialize(ref calldata);
-
-    let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
-
-    let campaign_dispatcher = ICampaignDispatcher { contract_address };
-    let new_class_hash = declare("TokengiverCampaign").unwrap().contract_class().class_hash;
-    campaign_dispatcher.upgrade(*new_class_hash);
-}
-
-
 fn deploy_erc20() -> ContractAddress {
     let class = declare("MyToken").unwrap().contract_class();
 
@@ -333,4 +315,40 @@ fn test_withdraw_event_emission() {
     );
 
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
+fn test_upgradability() {
+    let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
+    let strk_address = deploy_erc20();
+    let nft_address = __deploy_token_giver_NFT__();
+
+    let mut calldata = array![];
+    nft_address.serialize(ref calldata);
+    strk_address.serialize(ref calldata);
+
+    let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
+
+    let campaign_dispatcher = ICampaignDispatcher { contract_address };
+    let new_class_hash = declare("TokengiverCampaign").unwrap().contract_class().class_hash;
+    campaign_dispatcher.upgrade(*new_class_hash);
+}
+
+
+#[test]
+#[should_panic]
+fn test_upgradability_should_fail_if_not_owner_tries_to_update() {
+    let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
+    let strk_address = deploy_erc20();
+    let nft_address = __deploy_token_giver_NFT__();
+
+    let mut calldata = array![];
+    nft_address.serialize(ref calldata);
+    strk_address.serialize(ref calldata);
+
+    let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
+
+    let campaign_dispatcher = ICampaignDispatcher { contract_address };
+    let new_class_hash = declare("TokengiverCampaign").unwrap().contract_class().class_hash;
+    start_cheat_caller_address(contract_address, starknet::contract_address_const::<0x123>());
+    campaign_dispatcher.upgrade(*new_class_hash);
 }
