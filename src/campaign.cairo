@@ -131,6 +131,11 @@ mod TokengiverCampaign {
             self.campaign.write(campaign_address, new_campaign);
             self.campaigns.write(count, campaign_address);
             self.count.write(count);
+
+            self.withdrawal_balance.write(campaign_address, 0);
+            self.donation_count.write(campaign_address, 0);
+            self.donations.write(campaign_address, 0);
+
             self
                 .emit(
                     CreateCampaign {
