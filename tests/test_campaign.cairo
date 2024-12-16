@@ -317,6 +317,7 @@ fn test_withdraw_event_emission() {
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
 
+#[test]
 fn test_upgradability() {
     let class_hash = declare("TokengiverCampaign").unwrap().contract_class();
     let strk_address = deploy_erc20();
