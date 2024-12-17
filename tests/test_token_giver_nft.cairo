@@ -14,7 +14,9 @@ use tokengiver::interfaces::ITokenGiverNft::{
 };
 use tokengiver::base::errors::Errors::ALREADY_MINTED;
 use tokengiver::interfaces::ICampaign::{ICampaignDispatcher, ICampaignDispatcherTrait};
-
+use tokengiver:: interfaces::ICampaignLock::{
+     ICampaignLockDispatcher, ICampaignLockDispatcherTrait
+     };
 const ADMIN: felt252 = 'ADMIN';
 const USER_ONE: felt252 = 'BOB';
 
@@ -86,7 +88,7 @@ fn deploy_campaign_contract() -> ContractAddress {
 //     assert(nft_symbol == "TNFT1", 'invalid symbol');
 
 //     stop_prank(CheatTarget::One(nft_contract_address));
-// }
+// }campaign_contract_address
 
 #[test]
 fn test_last_minted_id_on_init_is_zero() {
@@ -129,3 +131,40 @@ fn test_get_user_token_id_after_minting() {
     assert(user_token_id == 1, 'invalid user token id');
     stop_cheat_caller_address(nft_contract_address);
 }
+
+
+// #[test]
+// #[fork("SEPOLIA_LATEST")]
+// fn test_create_campaign() {
+//     let  = deploy_campaign_contract();
+//     let campaign_contract = ICampaignDispatcher { contract_address: campaign_contract_address };
+
+//     // Using Sepolia V2 (Audited contract)
+
+//     let registry_hash: ClassHash = starknet::class_hash_const::<
+//         0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0
+//     >();
+//     let registry_hash_in_felt: felt252 = registry_hash.into();
+
+//     let implementation_hash = starknet::class_hash_const::<
+//         0x45d67b8590561c9b54e14dd309c9f38c4e2c554dd59414021f9d079811621bd
+//     >();
+//     let implementation_hash_in_felt: felt252 = implementation_hash.into();
+
+//     let salt = get_block_timestamp();
+//     let salt_in_felt: felt252 = salt.into();
+
+//     let recipient: ContractAddress = starknet::contract_address_const::<
+//         0x01526C92E52c337b7B04d1307c6080Ece3a17071F2F0295197cEa8d077c6FF80
+//     >();
+
+//     campaign_contract
+//         .create_campaign(
+//             registry_hash_in_felt, implementation_hash_in_felt, salt_in_felt, recipient
+//         );
+
+//     campaign_contract
+//         .lock(
+//             campaign_contract_address, 100
+//         );
+// }

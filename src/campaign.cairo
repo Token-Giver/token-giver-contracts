@@ -17,6 +17,9 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IRegistry::{
         IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher
     };
+     use tokengiver:: interfaces::ICampaignLock::{
+        ICampaignLockDispatcher, ICampaignLockDispatcherTrait
+    };
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
@@ -56,6 +59,7 @@ mod TokengiverCampaign {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
+        LockCampaign: LockCampaign
     }
 
     #[derive(Drop, starknet::Event)]
@@ -83,6 +87,13 @@ mod TokengiverCampaign {
         donor_address: ContractAddress,
         amount: u256,
         token_id: u256,
+        block_timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct LockCampaign {
+        campaign_address: ContractAddress,
+        lock_util: u64,
         block_timestamp: u64,
     }
 
@@ -160,6 +171,29 @@ mod TokengiverCampaign {
             assert(get_caller_address() == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
             campaign.metadata_URI = metadata_uri;
             self.campaign.write(campaign_address, campaign);
+        }
+
+        //CampaignLock function
+
+         fn lock_campaign(ref self:ContractState, campaign_address: ContractAddress, lock_util:u64){
+            let campaign: Campaign = self.campaign.read(campaign_address);
+            let caller: ContractAddress = get_caller_address();
+            assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
+            ICampaignLockDispatcher{
+                contract_address: campaign_address}
+            .lock(lock_util);
+
+        self
+                .emit(
+                    LockCampaign {
+                        campaign_address,
+                        lock_util,
+                        block_timestamp: get_block_timestamp(),
+                       
+                    }
+                );
+
+        
         }
 
 
