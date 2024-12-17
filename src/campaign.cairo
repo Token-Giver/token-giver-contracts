@@ -22,15 +22,7 @@ mod TokengiverCampaign {
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use openzeppelin_introspection::src5::SRC5Component;
-    use token_bound_accounts::components::account::account::AccountComponent;
-    use token_bound_accounts::components::lockable::lockable::LockableComponent;
-
-    component!(path: AccountComponent, storage: account, event: AccountEvent);
-    component!(path: LockableComponent, storage: lockable, event: LockableEvent);
-    component!(path: SRC5Component, storage: src5, event: SRC5Event);
-
-    impl LockableInternalImpl = LockableComponent::LockablePrivateImpl<ContractState>;
+    use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     pub struct DonationDetails {
@@ -53,12 +45,6 @@ mod TokengiverCampaign {
         donation_details: Map<ContractAddress, DonationDetails>,
         strk_address: ContractAddress,
         token_giver_nft_address: ContractAddress,
-        #[substorage(v0)]
-        account: AccountComponent::Storage,
-        #[substorage(v0)]
-        lockable: LockableComponent::Storage,
-        #[substorage(v0)]
-        src5: SRC5Component::Storage,
     }
 
     // *************************************************************************
@@ -70,12 +56,6 @@ mod TokengiverCampaign {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
-        #[flat]
-        AccountEvent: AccountComponent::Event,
-        #[flat]
-        LockableEvent: LockableComponent::Event,
-        #[flat]
-        SRC5Event: SRC5Component::Event
     }
 
     #[derive(Drop, starknet::Event)]
@@ -308,7 +288,7 @@ mod TokengiverCampaign {
         }
 
         fn is_locked(self: @ContractState, campaign_address: ContractAddress) -> (bool, u64) {
-            self.lockable._is_locked()
+            ILockableDispatcher { contract_address: campaign_address }.is_locked()
         }
     }
 }

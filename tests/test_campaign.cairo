@@ -9,6 +9,7 @@ use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
 use tokengiver::campaign::TokengiverCampaign::{Event, DonationCreated};
+use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
 fn REGISTRY_HASH() -> felt252 {
     0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0.try_into().unwrap()
@@ -163,4 +164,23 @@ fn test_withdraw() {
 
     assert(strk_dispatcher.balance_of(RECIPIENT()) == amount, 'withdrawal failed');
     assert(token_giver.get_available_withdrawal(campaign_address) == 0, 'withdrawal failed');
+}
+
+#[test]
+#[fork("Mainnet")]
+fn test_is_locked() {
+    let (token_giver_address, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+
+    stop_cheat_caller_address(token_giver_address);
+
+    let campaign_contract = ILockableDispatcher { contract_address: campaign_address };
+    let (is_locked, _) = campaign_contract.is_locked();
+
+    assert(is_locked == false, 'wrong lock value');
 }
