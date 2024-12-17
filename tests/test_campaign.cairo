@@ -85,7 +85,6 @@ fn test_donate() {
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
-    let mut spy = spy_events();
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
