@@ -27,6 +27,9 @@ mod TokengiverCampaign {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::upgrades::interface::IUpgradeable;
+    use token_bound_accounts::interfaces::ILockable::{
+        ILockableDispatcher, ILockableDispatcherTrait
+    };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -337,6 +340,10 @@ mod TokengiverCampaign {
 
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
+        }
+
+        fn is_locked(self: @ContractState, campaign_address: ContractAddress) -> (bool, u64) {
+            ILockableDispatcher { contract_address: campaign_address }.is_locked()
         }
     }
 }
