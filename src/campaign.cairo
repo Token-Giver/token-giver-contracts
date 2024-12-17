@@ -22,7 +22,9 @@ mod TokengiverCampaign {
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
+    use token_bound_accounts::interfaces::ILockable::{
+        ILockableDispatcher, ILockableDispatcherTrait
+    };
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     pub struct DonationDetails {
