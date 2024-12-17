@@ -1,4 +1,4 @@
-use starknet::ContractAddress;
+use starknet::{ContractAddress, ClassHash};
 use tokengiver::base::types::Campaign;
 // *************************************************************************
 //                              INTERFACE of TOKEN GIVER NFT
@@ -17,7 +17,7 @@ pub trait ICampaign<TState> {
     fn set_donations(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn donate(ref self: TState, campaign_address: ContractAddress, amount: u256, token_id: u256);
     fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
-
+    fn upgrade(ref self: TState, new_class_hash: ClassHash);
 
     // Getters
     fn get_campaign_metadata(self: @TState, campaign_address: ContractAddress) -> ByteArray;

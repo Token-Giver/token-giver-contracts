@@ -7,8 +7,8 @@ mod TokengiverCampaign {
     // *************************************************************************
     use core::traits::TryInto;
     use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
-        syscalls::deploy_syscall, SyscallResultTrait,
+        ContractAddress, get_caller_address, get_block_timestamp, ClassHash, get_contract_address,
+        syscalls::deploy_syscall, SyscallResultTrait, syscalls, class_hash::class_hash_const,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
@@ -20,11 +20,29 @@ mod TokengiverCampaign {
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::{NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE};
+    use tokengiver::base::errors::Errors::{
+        NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED
+    };
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+
     use token_bound_accounts::interfaces::ILockable::{
         ILockableDispatcher, ILockableDispatcherTrait
     };
+
+    use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    /// Upgradeable
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     pub struct DonationDetails {
@@ -47,6 +65,10 @@ mod TokengiverCampaign {
         donation_details: Map<ContractAddress, DonationDetails>,
         strk_address: ContractAddress,
         token_giver_nft_address: ContractAddress,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
 
     // *************************************************************************
@@ -56,8 +78,13 @@ mod TokengiverCampaign {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         CreateCampaign: CreateCampaign,
-        DonationCreated: DonationCreated,
+        DonationMade: DonationMade,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
+        WithdrawalMade: WithdrawalMade,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -78,13 +105,23 @@ mod TokengiverCampaign {
     }
 
     #[derive(Drop, starknet::Event)]
-    pub struct DonationCreated {
+    pub struct DonationMade {
         #[key]
         campaign_id: u256,
         #[key]
         donor_address: ContractAddress,
         amount: u256,
         token_id: u256,
+        block_timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct WithdrawalMade {
+        #[key]
+        campaign_address: ContractAddress,
+        #[key]
+        recipient: ContractAddress,
+        amount: u256,
         block_timestamp: u64,
     }
 
@@ -97,8 +134,10 @@ mod TokengiverCampaign {
         token_giver_nft_address: ContractAddress,
         strk_address: ContractAddress
     ) {
+        let owner = get_caller_address();
         self.token_giver_nft_address.write(token_giver_nft_address);
         self.strk_address.write(strk_address);
+        self.ownable.initializer(owner);
     }
 
     // *************************************************************************
@@ -106,6 +145,11 @@ mod TokengiverCampaign {
     // *************************************************************************
     #[abi(embed_v0)]
     impl CampaignImpl of ICampaign<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            // This function can only be called by the owner
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
         fn create_campaign(
             ref self: ContractState,
             registry_hash: felt252,
@@ -160,6 +204,42 @@ mod TokengiverCampaign {
             self.campaign.write(campaign_address, campaign);
         }
 
+        fn donate(
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
+        ) {
+            let donor = get_caller_address();
+
+            let token_address = self.strk_address.read();
+
+            IERC20Dispatcher { contract_address: token_address }
+                .approve(get_contract_address(), amount);
+
+            IERC20Dispatcher { contract_address: token_address }
+                .transfer_from(donor, campaign_address, amount);
+
+            let prev_count = self.donation_count.read(campaign_address);
+            self.donation_count.write(campaign_address, prev_count + 1);
+
+            let prev_donations = self.donations.read(campaign_address);
+            self.donations.write(campaign_address, prev_donations + amount);
+
+            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
+            self.donation_details.write(donor, donation_details);
+
+            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
+            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
+
+            self
+                .emit(
+                    DonationMade {
+                        campaign_id: token_id,
+                        donor_address: donor,
+                        amount: amount,
+                        token_id,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
 
         fn set_donation_count(ref self: ContractState, campaign_address: ContractAddress) {
             let prev_count: u16 = self.donation_count.read(campaign_address);
@@ -168,12 +248,6 @@ mod TokengiverCampaign {
 
         fn set_donations(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             self.donations.write(campaign_address, amount);
-        }
-
-        fn set_available_withdrawal(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256
-        ) {
-            self.withdrawal_balance.write(campaign_address, amount);
         }
 
         // withdraw function
@@ -189,8 +263,24 @@ mod TokengiverCampaign {
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
             let transfer_result = token_dispatcher.transfer_from(campaign_address, caller, amount);
-            assert!(transfer_result, "Transfer failed");
+            assert(transfer_result, TRANSFER_FAILED);
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
+
+            self
+                .emit(
+                    WithdrawalMade {
+                        campaign_address,
+                        recipient: caller,
+                        amount: amount,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
+
+        fn set_available_withdrawal(
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256
+        ) {
+            self.withdrawal_balance.write(campaign_address, amount);
         }
 
         // *************************************************************************
@@ -254,6 +344,7 @@ mod TokengiverCampaign {
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
         }
+
 
         fn donate(
             ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
