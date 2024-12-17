@@ -9,7 +9,7 @@ use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
 
-use tokengiver::campaign::TokengiverCampaign::{Event, DonationCreated};
+// use tokengiver::campaign::TokengiverCampaign::{Event, DonationCreated};
 use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
 use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade, WithdrawalMade, CreateCampaign};
@@ -362,7 +362,7 @@ fn test_upgradability_should_fail_if_not_owner_tries_to_update() {
 #[test]
 #[fork("Mainnet")]
 fn test_is_locked() {
-    let (token_giver_address, _) = __setup__();
+    let (token_giver_address, _, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
 
     //create campaign

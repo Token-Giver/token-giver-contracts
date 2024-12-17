@@ -346,40 +346,6 @@ mod TokengiverCampaign {
         }
 
 
-        fn donate(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
-        ) {
-            let donor = get_caller_address();
-
-            let token_address = self.strk_address.read();
-
-            IERC20Dispatcher { contract_address: token_address }
-                .transfer_from(donor, campaign_address, amount);
-
-            let prev_count = self.donation_count.read(campaign_address);
-            self.donation_count.write(campaign_address, prev_count + 1);
-
-            let prev_donations = self.donations.read(campaign_address);
-            self.donations.write(campaign_address, prev_donations + amount);
-
-            let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
-            self.donation_details.write(donor, donation_details);
-
-            let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
-            self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
-
-            self
-                .emit(
-                    DonationCreated {
-                        campaign_id: token_id,
-                        donor_address: donor,
-                        amount: amount,
-                        token_id,
-                        block_timestamp: get_block_timestamp(),
-                    }
-                );
-        }
-
         fn is_locked(self: @ContractState, campaign_address: ContractAddress) -> (bool, u64) {
             ILockableDispatcher { contract_address: campaign_address }.is_locked()
         }
