@@ -9,6 +9,7 @@ use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
 use tokengiver::interfaces::ICampaign::{ICampaign, ICampaignDispatcher, ICampaignDispatcherTrait};
 use tokengiver::campaign::TokengiverCampaign::{Event, DonationMade, WithdrawalMade, CreateCampaign};
+use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
 fn REGISTRY_HASH() -> felt252 {
     0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0.try_into().unwrap()
@@ -80,7 +81,6 @@ fn test_donate() {
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
     let random_id = 1;
-    let mut spy = spy_events();
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
@@ -352,4 +352,21 @@ fn test_upgradability_should_fail_if_not_owner_tries_to_update() {
     let new_class_hash = declare("TokengiverCampaign").unwrap().contract_class().class_hash;
     start_cheat_caller_address(contract_address, starknet::contract_address_const::<0x123>());
     campaign_dispatcher.upgrade(*new_class_hash);
+}
+
+#[test]
+#[fork("Mainnet")]
+fn test_is_locked() {
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+
+    let campaign_contract = ILockableDispatcher { contract_address: campaign_address };
+    let (is_locked, _) = campaign_contract.is_locked();
+    assert(is_locked == false, 'wrong lock value');
 }
