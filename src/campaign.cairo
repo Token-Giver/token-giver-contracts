@@ -345,5 +345,10 @@ mod TokengiverCampaign {
         fn is_locked(self: @ContractState, campaign_address: ContractAddress) -> (bool, u64) {
             ILockableDispatcher { contract_address: campaign_address }.is_locked()
         }
+
+         fn lock_campaign(self: @ContractState, campaign_address: ContractAddress, lock_until: u64)  {
+            ILockableDispatcher { contract_address: campaign_address }.lock(lock_until)
+        }
     }
 }
+

@@ -28,4 +28,5 @@ pub trait ICampaign<TState> {
     fn get_available_withdrawal(self: @TState, campaign_address: ContractAddress) -> u256;
     fn get_donations(self: @TState, campaign_address: ContractAddress) -> u256;
     fn is_locked(self: @TState, campaign_address: ContractAddress) -> (bool, u64);
+    fn lock_campaign(self: @TState, campaign_address: ContractAddress, lock_until: u64);
 }

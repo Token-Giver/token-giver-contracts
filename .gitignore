@@ -2,4 +2,5 @@
 target
 .DS_Store
 Scarb.lock
+Scarb.toml
 snfoundry_cache/https___starknet_mainnet_public_blastapi_io_rpc_v0_7_631894_v3.json

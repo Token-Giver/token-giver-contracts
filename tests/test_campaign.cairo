@@ -370,3 +370,22 @@ fn test_is_locked() {
     let (is_locked, _) = campaign_contract.is_locked();
     assert(is_locked == false, 'wrong lock value');
 }
+
+
+#[test]
+#[fork("Mainnet")]
+fn test_lock_campaign() {
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
+    stop_cheat_caller_address(token_giver_address);
+    let campaign_contract = ILockableDispatcher { contract_address: campaign_address };
+    let (is_locked, _) = campaign_contract.lock(1000000);
+    assert(is_locked == false, 'Campaign locked');
+
+}
+
