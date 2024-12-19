@@ -8,4 +8,5 @@ pub mod Errors {
     pub const INVALID_OWNER: felt252 = 'TGN: caller is not owner!';
     pub const INVALID_CAMPAIGN: felt252 = 'TGN: campaign is not owner!';
     pub const INSUFFICIENT_BALANCE: felt252 = 'TGN: insufficient balance!';
+    pub const TRANSFER_FAILED: felt252 = 'TGN: transfer failed!';
 }

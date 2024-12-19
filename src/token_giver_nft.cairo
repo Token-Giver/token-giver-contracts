@@ -22,6 +22,7 @@ pub mod TokenGiverNFT {
     component!(path: SRC5Component, storage: src5, event: SRC5Event);
 
     // ERC721 Mixin
+    #[abi(embed_v0)]
     impl ERC721MixinImpl = ERC721Component::ERC721MixinImpl<ContractState>;
     impl ERC721InternalImpl = ERC721Component::InternalImpl<ContractState>;
 
@@ -74,7 +75,7 @@ pub mod TokenGiverNFT {
         //                            EXTERNAL
         // *************************************************************************
 
-        fn mint_token_giver_nft(ref self: ContractState, address: ContractAddress) {
+        fn mint_token_giver_nft(ref self: ContractState, address: ContractAddress) -> u256 {
             let mut token_id = self.last_minted_id.read() + 1;
             self.erc721.mint(address, token_id);
             let timestamp: u64 = get_block_timestamp();
@@ -82,6 +83,7 @@ pub mod TokenGiverNFT {
             self.user_token_id.write(address, token_id);
             self.last_minted_id.write(token_id);
             self.mint_timestamp.write(token_id, timestamp);
+            token_id
         }
 
 
