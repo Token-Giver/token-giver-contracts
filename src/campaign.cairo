@@ -281,17 +281,15 @@ mod TokengiverCampaign {
         }
 
         fn lock_campaign(
-            ref self: ContractState, 
-            campaign_address: ContractAddress, 
-            lock_until: u64
+            ref self: ContractState, campaign_address: ContractAddress, lock_until: u64
         ) {
             // Get campaign details
             let campaign: Campaign = self.campaign.read(campaign_address);
             let caller = get_caller_address();
-            
+
             // Only campaign owner can lock the campaign
             assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
-            
+
             // Call lock function on the campaign's TBA
             ILockableDispatcher { contract_address: campaign_address }.lock(lock_until);
         }

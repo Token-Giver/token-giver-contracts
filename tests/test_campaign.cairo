@@ -381,7 +381,7 @@ fn test_lock_campaign() {
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT());
-    
+
     // Lock campaign for 1 day (86400 seconds)
     let lock_until = get_block_timestamp() + 86400;
     // Call through the campaign address (TBA) to properly authenticate
