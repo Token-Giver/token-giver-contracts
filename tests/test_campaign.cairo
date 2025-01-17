@@ -109,7 +109,6 @@ fn test_donate() {
     start_cheat_caller_address(token_giver_address, DONOR());
     token_giver.donate(campaign_address, amount, random_id);
     stop_cheat_caller_address(token_giver_address);
-    //  assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
 }
@@ -189,11 +188,10 @@ fn test_withdraw() {
     stop_cheat_caller_address(strk_address);
 
     start_cheat_caller_address(token_giver_address, DONOR());
-    println!("Before the transfer Action, Amount is : {:?}", amount);
+
     strk_dispatcher.transfer(campaign_address, 0);
     token_giver.donate(campaign_address, 0, random_id);
     stop_cheat_caller_address(token_giver_address);
-    //  assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
 
@@ -286,7 +284,7 @@ fn test_withdraw_event_emission() {
 
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
-    println!("Before the transfer Action, Amount is : {:?}", amount);
+
     strk_dispatcher.transfer(campaign_address, 0);
     token_giver.donate(campaign_address, 0, random_id);
     stop_cheat_caller_address(token_giver_address);
@@ -338,8 +336,10 @@ fn test_upgradability() {
     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
 
     let campaign_dispatcher = ICampaignDispatcher { contract_address };
+    start_cheat_caller_address(contract_address, owner);
     let new_class_hash = declare("TokengiverCampaigns").unwrap().contract_class().class_hash;
     campaign_dispatcher.upgrade(*new_class_hash);
+    stop_cheat_caller_address(contract_address);
 }
 
 

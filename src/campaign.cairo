@@ -250,7 +250,7 @@ mod TokengiverCampaigns {
             assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
 
             let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
-            println!("withdrawal balance: {:?}", available_balance);
+
             assert(amount <= available_balance, INSUFFICIENT_BALANCE);
 
             let token_address = self.strk_address.read();
