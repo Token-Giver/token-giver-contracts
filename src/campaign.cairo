@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::contract]
-mod TokengiverCampaign {
+mod TokengiverCampaigns {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
@@ -129,9 +129,9 @@ mod TokengiverCampaign {
     fn constructor(
         ref self: ContractState,
         token_giver_nft_address: ContractAddress,
-        strk_address: ContractAddress
+        strk_address: ContractAddress,
+        owner: ContractAddress,
     ) {
-        let owner = get_caller_address();
         self.token_giver_nft_address.write(token_giver_nft_address);
         self.strk_address.write(strk_address);
         self.ownable.initializer(owner);
@@ -206,23 +206,18 @@ mod TokengiverCampaign {
         ) {
             let donor = get_caller_address();
 
-            let token_address = self.strk_address.read();
-
-            IERC20Dispatcher { contract_address: token_address }
-                .approve(get_contract_address(), amount);
-
-            IERC20Dispatcher { contract_address: token_address }
-                .transfer_from(donor, campaign_address, amount);
-
+            // fetch campaign denotion counts
             let prev_count = self.donation_count.read(campaign_address);
             self.donation_count.write(campaign_address, prev_count + 1);
 
+            // fetch denotation balance for a compaign
             let prev_donations = self.donations.read(campaign_address);
             self.donations.write(campaign_address, prev_donations + amount);
 
+            //save donation details
             let donation_details = DonationDetails { token_id, donor_address: donor, amount, };
             self.donation_details.write(donor, donation_details);
-
+            // fetch withdrawal balance and update it
             let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
             self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
 
@@ -255,6 +250,7 @@ mod TokengiverCampaign {
             assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
 
             let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
+            println!("withdrawal balance: {:?}", available_balance);
             assert(amount <= available_balance, INSUFFICIENT_BALANCE);
 
             let token_address = self.strk_address.read();
