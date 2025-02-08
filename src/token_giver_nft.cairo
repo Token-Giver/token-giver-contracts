@@ -100,5 +100,9 @@ pub mod TokenGiverNFT {
         fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
             self.mint_timestamp.read(token_id)
         }
+
+        fn get_token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            self.erc721.token_uri(token_id)
+        }
     }
 }
