@@ -1,5 +1,5 @@
 #[starknet::contract]
-pub mod TokenGiversNFT {
+pub mod NFTForCampaignOnTokenGiver {
     // *************************************************************************
     //                             IMPORTS
     // *************************************************************************
@@ -121,7 +121,6 @@ pub mod TokenGiversNFT {
         fn get_token_uri(self: @ContractState, token_id: u256) -> ByteArray {
             self.erc721.token_uri(token_id)
         }
-
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             // This function can only be called by the owner
             self.ownable.assert_only_owner();
@@ -129,3 +128,4 @@ pub mod TokenGiversNFT {
         }
     }
 }
+
