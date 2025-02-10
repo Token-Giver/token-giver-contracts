@@ -23,6 +23,11 @@ pub trait ICampaign<TState> {
     fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn upgrade(ref self: TState, new_class_hash: ClassHash);
     fn lock_campaign(ref self: TState, campaign_address: ContractAddress, lock_until: u64);
+    fn update_token_giver_nft(
+        ref self: TState,
+        token_giver_nft_class_hash: ClassHash,
+        token_giver_nft_contract_address: ContractAddress
+    );
 
     // Getters
     //  fn get_campaign_metadata(self: @TState, campaign_address: ContractAddress) -> ByteArray;

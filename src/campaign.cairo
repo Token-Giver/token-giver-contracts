@@ -21,7 +21,7 @@ mod TokengiverCampaigns {
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::{
-        NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED
+        NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED, NOT_CONTRACT_OWNER
     };
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::access::ownable::OwnableComponent;
@@ -389,6 +389,17 @@ mod TokengiverCampaigns {
 
         fn is_locked(self: @ContractState, campaign_address: ContractAddress) -> (bool, u64) {
             ILockableDispatcher { contract_address: campaign_address }.is_locked()
+        }
+
+        fn update_token_giver_nft(
+            ref self: ContractState,
+            token_giver_nft_class_hash: ClassHash,
+            token_giver_nft_contract_address: ContractAddress
+        ) {
+            // This function can only be called by the owner
+            self.ownable.assert_only_owner();
+            self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
+            self.token_giver_nft_contract_address.write(token_giver_nft_contract_address);
         }
     }
 }
