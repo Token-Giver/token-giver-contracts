@@ -387,62 +387,82 @@ fn test_withdraw_event_emission() {
 
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
-// #[test]
-// fn test_upgradability() {
-//     let class_hash = declare("TokengiverCampaigns").unwrap().contract_class();
-//     let strk_address = deploy_erc20();
-//     let nft_address = __deploy_token_giver_NFT__();
-//     let owner = OWNER();
+#[test]
+fn test_upgradability() {
+    let class_hash = declare("TokengiverCampaigns").unwrap().contract_class();
+    let strk_address = deploy_erc20();
+    let nft_address = __deploy_token_giver_NFT__();
+    let owner = OWNER();
 
-//     let mut calldata = array![];
-//     nft_address.serialize(ref calldata);
-//     strk_address.serialize(ref calldata);
-//     owner.serialize(ref calldata);
+    let nft_class_hash = declare("NFTForCampaignOnTokenGiver").unwrap().contract_class();
 
-//     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
+    let mut calldata = array![];
+    nft_class_hash.serialize(ref calldata);
+    nft_address.serialize(ref calldata);
 
-//     let campaign_dispatcher = ICampaignDispatcher { contract_address };
-//     start_cheat_caller_address(contract_address, owner);
-//     let new_class_hash = declare("TokengiverCampaigns").unwrap().contract_class().class_hash;
-//     campaign_dispatcher.upgrade(*new_class_hash);
-//     stop_cheat_caller_address(contract_address);
-// }
+    strk_address.serialize(ref calldata);
+    owner.serialize(ref calldata);
 
-// #[test]
-// #[should_panic]
-// fn test_upgradability_should_fail_if_not_owner_tries_to_update() {
-//     let class_hash = declare("TokengiverCampaigns").unwrap().contract_class();
-//     let strk_address = deploy_erc20();
-//     let nft_address = __deploy_token_giver_NFT__();
+    let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
 
-//     let mut calldata = array![];
-//     nft_address.serialize(ref calldata);
-//     strk_address.serialize(ref calldata);
+    //  let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
 
-//     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
+    let campaign_dispatcher = ICampaignDispatcher { contract_address };
+    start_cheat_caller_address(contract_address, owner);
+    let new_class_hash = declare("TokengiverCampaigns").unwrap().contract_class().class_hash;
+    campaign_dispatcher.upgrade(*new_class_hash);
+    stop_cheat_caller_address(contract_address);
+}
 
-//     let campaign_dispatcher = ICampaignDispatcher { contract_address };
-//     let new_class_hash = declare("TokengiverCampaigns").unwrap().contract_class().class_hash;
-//     start_cheat_caller_address(contract_address, starknet::contract_address_const::<0x123>());
-//     campaign_dispatcher.upgrade(*new_class_hash);
-// }
+#[test]
+#[should_panic]
+fn test_upgradability_should_fail_if_not_owner_tries_to_update() {
+    let class_hash = declare("TokengiverCampaigns").unwrap().contract_class();
+    let strk_address = deploy_erc20();
+    let nft_address = __deploy_token_giver_NFT__();
+    let owner = OWNER();
 
-// #[test]
-// #[fork("Mainnet")]
-// fn test_is_locked() {
-//     let (token_giver_address, _, _) = __setup__();
-//     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let nft_class_hash = declare("NFTForCampaignOnTokenGiver").unwrap().contract_class();
 
-//     //create campaign
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
-//     stop_cheat_caller_address(token_giver_address);
+    let mut calldata = array![];
+    nft_class_hash.serialize(ref calldata);
+    nft_address.serialize(ref calldata);
 
-//     let campaign_contract = ILockableDispatcher { contract_address: campaign_address };
-//     let (is_locked, _) = campaign_contract.is_locked();
-//     assert(is_locked == false, 'wrong lock value');
-// }
+    strk_address.serialize(ref calldata);
+    owner.serialize(ref calldata);
+
+    let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
+
+    let campaign_dispatcher = ICampaignDispatcher { contract_address };
+    let new_class_hash = declare("TokengiverCampaigns").unwrap().contract_class().class_hash;
+    start_cheat_caller_address(contract_address, starknet::contract_address_const::<0x123>());
+    campaign_dispatcher.upgrade(*new_class_hash);
+}
+
+#[test]
+#[fork("Mainnet")]
+fn test_is_locked() {
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+
+    //create campaign
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+
+    stop_cheat_caller_address(token_giver_address);
+
+    let campaign_contract = ILockableDispatcher { contract_address: campaign_address };
+    let (is_locked, _) = campaign_contract.is_locked();
+    assert(is_locked == false, 'wrong lock value');
+}
 
 // #[test]
 // #[fork("Mainnet")]
@@ -450,17 +470,27 @@ fn test_withdraw_event_emission() {
 //     let (token_giver_address, _, _) = __setup__();
 //     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
 
-//     // Create campaign as RECIPIENT
+//     //create campaign
+//     let registry_hash = REGISTRY_HASH();
+//     let implementation_hash = IMPLEMENTATION_HASH();
+
+//     let salt: felt252 = SALT();
+//     let recipient: ContractAddress = RECIPIENT();
+
+//     //create campaign
 //     start_cheat_caller_address(token_giver_address, RECIPIENT());
+//     let lock_until = get_block_timestamp() + 86400;
 //     let campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
+//         .create_campaign(registry_hash, implementation_hash, salt, recipient);
+//     token_giver.lock_campaign(campaign_address, lock_until);
+//     stop_cheat_caller_address(token_giver_address);
 
 //     // Lock campaign for 1 day (86400 seconds)
-//     let lock_until = get_block_timestamp() + 86400;
+//    // let lock_until = get_block_timestamp() + 86400;
 //     // Call through the campaign address (TBA) to properly authenticate
-//     start_cheat_caller_address(campaign_address, RECIPIENT());
-//     token_giver.lock_campaign(campaign_address, lock_until);
-//     stop_cheat_caller_address(campaign_address);
+//     // start_cheat_caller_address(campaign_address, recipient);
+//     // token_giver.lock_campaign(campaign_address, lock_until);
+//     // stop_cheat_caller_address(campaign_address);
 
 //     // Verify campaign is locked
 //     let (is_locked, locked_until) = token_giver.is_locked(campaign_address);
@@ -468,24 +498,30 @@ fn test_withdraw_event_emission() {
 //     assert(locked_until == lock_until, 'wrong lock duration');
 // }
 
-// #[test]
-// #[should_panic(expected: ('TGN: not campaign owner!',))]
-// #[fork("Mainnet")]
-// fn test_lock_campaign_fails_if_not_owner() {
-//     let (token_giver_address, _, _) = __setup__();
-//     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+#[test]
+#[should_panic(expected: ('TGN: not campaign owner!',))]
+#[fork("Mainnet")]
+fn test_lock_campaign_fails_if_not_owner() {
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
 
-//     // Create campaign as RECIPIENT
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
-//     stop_cheat_caller_address(token_giver_address);
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
 
-//     // Try to lock campaign as DONOR (should fail)
-//     start_cheat_caller_address(token_giver_address, DONOR());
-//     let lock_until = get_block_timestamp() + 86400;
-//     token_giver.lock_campaign(campaign_address, lock_until);
-//     stop_cheat_caller_address(token_giver_address);
-// }
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
 
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+
+    stop_cheat_caller_address(token_giver_address);
+
+    // Try to lock campaign as DONOR (should fail)
+    start_cheat_caller_address(token_giver_address, DONOR());
+    let lock_until = get_block_timestamp() + 86400;
+    token_giver.lock_campaign(campaign_address, lock_until);
+    stop_cheat_caller_address(token_giver_address);
+}
 

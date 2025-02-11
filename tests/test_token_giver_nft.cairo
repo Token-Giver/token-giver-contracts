@@ -19,7 +19,7 @@
 
 // fn __setup__() -> ContractAddress {
 //     // deploy  events
-//     let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
+//     let nft_class_hash = declare("NFTForCampaignOnTokenGiver").unwrap().contract_class();
 
 //     let mut events_constructor_calldata: Array<felt252> = array![ADMIN];
 //     let (nft_contract_address, _) = nft_class_hash.deploy(@events_constructor_calldata).unwrap();
