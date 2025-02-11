@@ -1,0 +1,17 @@
+
+Sapolia
+
+Token giver nft class hash: 0x2f433f288a34e89e513aca7cec57f077b245678f445fc2c572d8dcea547cdf4
+
+Token Giver NFT Contract Address: 0x16fef5b48768e8bafc2cb8b429a6bfa84ce074bb8cf92604beb6bc11447ee50
+
+
+Token Giver Campaign Clash Hash: 0x49b1f9da289e5c35ddfbb0547b64851b1c80f39ce5c899f1b18767a6071b081
+
+Token Giver Campaign Address:
+
+0x070790e665f1ca28d58b51d42bf1c468da844a54cf626ede7bd01afabd2ee488
+
+
+
+
