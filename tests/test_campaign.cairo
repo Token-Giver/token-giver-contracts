@@ -267,131 +267,126 @@ fn test_donate_event_emission() {
 
     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
-// #[test]
-// #[fork("Mainnet")]
-// fn test_withdraw() {
-//     let (token_giver_address, strk_address, _) = __setup__();
-//     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
-//     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-//     let random_id = 1;
 
-//     //create campaign
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
-//     stop_cheat_caller_address(token_giver_address);
+#[test]
+#[fork("Mainnet")]
+fn test_withdraw() {
+    let (token_giver_address, strk_address, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+    let random_id = 1;
 
-//     /// Transfer STRK to Donor
-//     start_cheat_caller_address(strk_address, OWNER());
-//     let amount = 35; //
-//     strk_dispatcher.transfer(DONOR(), amount);
-//     assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
-//     stop_cheat_caller_address(strk_address);
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
 
-//     // approve allowance
-//     start_cheat_caller_address(strk_address, DONOR());
-//     strk_dispatcher.approve(token_giver_address, amount);
-//     stop_cheat_caller_address(strk_address);
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
 
-//     start_cheat_caller_address(token_giver_address, DONOR());
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(registry_hash, implementation_hash, salt, recipient);
 
-//     strk_dispatcher.transfer(campaign_address, 0);
-//     token_giver.donate(campaign_address, 0, random_id);
-//     stop_cheat_caller_address(token_giver_address);
-//     assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
-//     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
+    stop_cheat_caller_address(token_giver_address);
 
-//     // APPROVE CONTRACT TO TRANSFER
-//     // Campaign address (TBA) -> approves token giver contract
-//     start_cheat_caller_address(strk_address, campaign_address);
-//     strk_dispatcher.approve(token_giver_address, amount);
-//     stop_cheat_caller_address(strk_address);
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 35; //
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
+    stop_cheat_caller_address(strk_address);
 
-//     // Campaign creator (RECIPIENT()) -> withdraws donations
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
 
-//     token_giver.withdraw(campaign_address, 0);
-//     stop_cheat_caller_address(token_giver_address);
+    start_cheat_caller_address(token_giver_address, DONOR());
 
-//     assert(strk_dispatcher.balance_of(RECIPIENT()) == 0, 'withdrawal failed');
-// }
+    strk_dispatcher.transfer(campaign_address, 0);
+    token_giver.donate(campaign_address, 0, random_id);
+    stop_cheat_caller_address(token_giver_address);
+    assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
+    assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
 
-// #[test]
-// #[fork("Mainnet")]
-// fn test_create_campaign() {
-//     let (token_giver_address, _, _) = __setup__();
-//     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    // APPROVE CONTRACT TO TRANSFER
+    // Campaign address (TBA) -> approves token giver contract
+    start_cheat_caller_address(strk_address, campaign_address);
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
 
-//     // create campaign
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let created_campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
-//     stop_cheat_caller_address(token_giver_address);
+    // Campaign creator (RECIPIENT()) -> withdraws donations
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
 
-//     // // get campagin
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let campaign = token_giver.get_campaign(created_campaign_address);
-//     stop_cheat_caller_address(token_giver_address);
+    token_giver.withdraw(campaign_address, 0);
+    stop_cheat_caller_address(token_giver_address);
 
-//     assert(created_campaign_address == campaign.campaign_address, 'create campaign failed');
-// }
+    assert(strk_dispatcher.balance_of(RECIPIENT()) == 0, 'withdrawal failed');
+}
 
-// #[test]
-// #[fork("Mainnet")]
-// fn test_withdraw_event_emission() {
-//     let (token_giver_address, strk_address, _) = __setup__();
-//     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
-//     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-//     let random_id = 1;
-//     let mut spy = spy_events();
 
-//     //create campaign
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     let campaign_address = token_giver
-//         .create_campaign(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT());
-//     stop_cheat_caller_address(token_giver_address);
+#[test]
+#[fork("Mainnet")]
+fn test_withdraw_event_emission() {
+    let (token_giver_address, strk_address, _) = __setup__();
+    let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+    let random_id = 1;
+    let mut spy = spy_events();
 
-//     let amount = 35; //
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
 
-//     // donate
-//     start_cheat_caller_address(token_giver_address, DONOR());
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
 
-//     strk_dispatcher.transfer(campaign_address, 0);
-//     token_giver.donate(campaign_address, 0, random_id);
-//     stop_cheat_caller_address(token_giver_address);
-//     //  assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
-//     assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
-//     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
+    //create campaign
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_address = token_giver
+        .create_campaign(registry_hash, implementation_hash, salt, recipient);
 
-//     // approve allowance
-//     start_cheat_caller_address(strk_address, DONOR());
-//     strk_dispatcher.approve(token_giver_address, amount);
-//     stop_cheat_caller_address(strk_address);
+    stop_cheat_caller_address(token_giver_address);
 
-//     // Campaign address (TBA) -> approves token giver contract
-//     start_cheat_caller_address(strk_address, campaign_address);
-//     strk_dispatcher.approve(token_giver_address, amount);
-//     stop_cheat_caller_address(strk_address);
+    let amount = 35; //
 
-//     // Campaign creator (RECIPIENT()) -> withdraws donations
-//     start_cheat_caller_address(token_giver_address, RECIPIENT());
-//     token_giver.withdraw(campaign_address, 0);
-//     stop_cheat_caller_address(token_giver_address);
+    // donate
+    start_cheat_caller_address(token_giver_address, DONOR());
 
-//     assert(strk_dispatcher.balance_of(RECIPIENT()) == 0, 'withdrawal failed');
+    strk_dispatcher.transfer(campaign_address, 0);
+    token_giver.donate(campaign_address, 0, random_id);
+    stop_cheat_caller_address(token_giver_address);
+    //  assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
+    assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
+    assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
 
-//     let expected_event = Event::WithdrawalMade(
-//         WithdrawalMade {
-//             campaign_address: campaign_address,
-//             recipient: RECIPIENT(),
-//             amount: 0,
-//             block_timestamp: get_block_timestamp(),
-//         }
-//     );
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
 
-//     spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
-// }
+    // Campaign address (TBA) -> approves token giver contract
+    start_cheat_caller_address(strk_address, campaign_address);
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
 
+    // Campaign creator (RECIPIENT()) -> withdraws donations
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    token_giver.withdraw(campaign_address, 0);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(strk_dispatcher.balance_of(RECIPIENT()) == 0, 'withdrawal failed');
+
+    let expected_event = Event::WithdrawalMade(
+        WithdrawalMade {
+            campaign_address: campaign_address,
+            recipient: RECIPIENT(),
+            amount: 0,
+            block_timestamp: get_block_timestamp(),
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
 // #[test]
 // fn test_upgradability() {
 //     let class_hash = declare("TokengiverCampaigns").unwrap().contract_class();
