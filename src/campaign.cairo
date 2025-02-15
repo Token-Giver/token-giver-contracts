@@ -189,15 +189,15 @@ mod TokengiverCampaigns {
                     implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
                 );
 
-            let max_approval: u256 = u256 {
-                low: 0xffffffffffffffffffffffffffffffff, high: 0xffffffffffffffffffffffffffffffff
-            };
+            // let max_approval: u256 = u256 {
+            //     low: 0xffffffffffffffffffffffffffffffff, high: 0xffffffffffffffffffffffffffffffff
+            // };
 
-            let token_address = self.strk_address.read();
+            // let token_address = self.strk_address.read();
 
-            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+            //  let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
 
-            token_dispatcher.approve(get_caller_address(), max_approval);
+            // token_dispatcher.approve(get_caller_address(), max_approval);
 
             let token_uri = token_giver_dispatcher.get_token_uri(token_id);
 
@@ -231,7 +231,6 @@ mod TokengiverCampaigns {
 
             campaign_address
         }
-
 
 
         fn donate(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
@@ -277,7 +276,6 @@ mod TokengiverCampaigns {
         }
 
 
-
         fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             let campaign: Campaign = self.campaign.read(campaign_address);
             let caller: ContractAddress = get_caller_address();
@@ -291,8 +289,8 @@ mod TokengiverCampaigns {
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
 
-            let allowance = token_dispatcher.allowance(campaign_address, get_caller_address());
-            assert(allowance >= amount, 'Insufficient allowance');
+            // let allowance = token_dispatcher.allowance(campaign_address, get_caller_address());
+            // assert(allowance >= amount, 'Insufficient allowance');
             let transfer_result = token_dispatcher.transfer(campaign_address, amount);
             assert(transfer_result, TRANSFER_FAILED);
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
