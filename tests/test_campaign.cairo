@@ -329,7 +329,7 @@ fn test_withdraw_event_emission() {
     let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-  
+
     let mut spy = spy_events();
 
     let registry_hash = REGISTRY_HASH();

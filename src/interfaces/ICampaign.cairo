@@ -29,6 +29,8 @@ pub trait ICampaign<TState> {
         token_giver_nft_contract_address: ContractAddress
     );
 
+    //     fn approve_campaign_spending(ref self: TState, campaign_address: ContractAddress);
+
     // Getters
     //  fn get_campaign_metadata(self: @TState, campaign_address: ContractAddress) -> ByteArray;
     fn get_campaign(self: @TState, campaign_address: ContractAddress) -> Campaign;

@@ -176,11 +176,11 @@ mod TokengiverCampaigns {
             };
 
             // mint the nft
-            token_giver_dispatcher.mint_token_giver_nft(recipient.clone());
+            token_giver_dispatcher.mint_token_giver_nft(get_caller_address());
 
             // get the token base on the user that nft was minted for
 
-            let token_id = token_giver_dispatcher.get_user_token_id(recipient.clone());
+            let token_id = token_giver_dispatcher.get_user_token_id(get_caller_address());
 
             let campaign_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
@@ -188,11 +188,22 @@ mod TokengiverCampaigns {
                 .create_account(
                     implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
                 );
+
+            let max_approval: u256 = u256 {
+                low: 0xffffffffffffffffffffffffffffffff, high: 0xffffffffffffffffffffffffffffffff
+            };
+
+            let token_address = self.strk_address.read();
+
+            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+
+            token_dispatcher.approve(get_caller_address(), max_approval);
+
             let token_uri = token_giver_dispatcher.get_token_uri(token_id);
 
             let new_campaign = Campaign {
                 campaign_address,
-                campaign_owner: recipient,
+                campaign_owner: get_caller_address(),
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id.clone()
             };
@@ -221,18 +232,7 @@ mod TokengiverCampaigns {
             campaign_address
         }
 
-        /// @notice set campaign metadata_uri (`banner_image, description, campaign_image` to be
-        /// uploaded to arweave or ipfs)
-        /// @params campaign_address the targeted campaign address
-        /// @params metadata_uri the campaign CID
-        // fn set_campaign_metadata_uri(
-        //     ref self: ContractState, campaign_address: ContractAddress, metadata_uri: ByteArray
-        // ) {
-        //     let mut campaign: Campaign = self.campaign.read(campaign_address);
-        //     assert(get_caller_address() == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
-        //     campaign.metadata_URI = metadata_uri;
-        //     self.campaign.write(campaign_address, campaign);
-        // }
+
 
         fn donate(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             let donor = get_caller_address();
@@ -276,7 +276,8 @@ mod TokengiverCampaigns {
             self.donations.write(campaign_address, amount);
         }
 
-        // withdraw function
+
+
         fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             let campaign: Campaign = self.campaign.read(campaign_address);
             let caller: ContractAddress = get_caller_address();
@@ -285,11 +286,14 @@ mod TokengiverCampaigns {
 
             let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
 
-            assert(available_balance >= amount, INSUFFICIENT_BALANCE);
+            assert(amount <= available_balance, INSUFFICIENT_BALANCE);
 
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
-            let transfer_result = token_dispatcher.transfer_from(campaign_address, caller, amount);
+
+            let allowance = token_dispatcher.allowance(campaign_address, get_caller_address());
+            assert(allowance >= amount, 'Insufficient allowance');
+            let transfer_result = token_dispatcher.transfer(campaign_address, amount);
             assert(transfer_result, TRANSFER_FAILED);
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
 
@@ -344,42 +348,6 @@ mod TokengiverCampaigns {
             self.campaign.read(campaign_address)
         }
 
-        // fn get_campaign_metadata(
-        //     self: @ContractState, campaign_address: ContractAddress
-        // ) -> ByteArray {
-        //     let campaign: Campaign = self.campaign.read(campaign_address);
-        //     campaign.metadata_URI
-        // }
-
-        // fn get_campaigns(self: @ContractState) -> Array<ByteArray> {
-        //     let mut campaigns = ArrayTrait::new();
-        //     let count = self.count.read();
-        //     let mut i: u16 = 1;
-
-        //     while i < count + 1 {
-        //         let campaignAddress: ContractAddress = self.campaigns.read(i);
-        //         let campaign: Campaign = self.campaign.read(campaignAddress);
-        //        campaigns.append(campaign.nft_token_uri);
-        //         i += 1;
-        //     };
-        //     campaigns
-        // }
-
-        // fn get_user_campaigns(self: @ContractState, user: ContractAddress) -> Array<ByteArray> {
-        //     let mut campaigns = ArrayTrait::new();
-        //     let count = self.count.read();
-        //     let mut i: u16 = 1;
-
-        //     while i < count + 1 {
-        //         let campaignAddress: ContractAddress = self.campaigns.read(i);
-        //         let campaign: Campaign = self.campaign.read(campaignAddress);
-        //         if campaign.campaign_owner == user {
-        //             campaigns.append(campaign.nft_token_uri);
-        //         }
-        //         i += 1;
-        //     };
-        //     campaigns
-        // }
 
         fn get_donation_count(self: @ContractState, campaign_address: ContractAddress) -> u16 {
             self.donation_count.read(campaign_address)
