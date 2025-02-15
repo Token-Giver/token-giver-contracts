@@ -289,9 +289,9 @@ mod TokengiverCampaigns {
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
 
-            // let allowance = token_dispatcher.allowance(campaign_address, get_caller_address());
-            // assert(allowance >= amount, 'Insufficient allowance');
-            let transfer_result = token_dispatcher.transfer(campaign_address, amount);
+            // Convert amount to match STRK decimals (18 decimals)
+            let adjusted_amount: u256 = amount * 1_000000000000000000;
+            let transfer_result = token_dispatcher.transfer(campaign_address, adjusted_amount);
             assert(transfer_result, TRANSFER_FAILED);
             self.withdrawal_balance.write(campaign_address, available_balance - amount);
 
