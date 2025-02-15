@@ -234,9 +234,7 @@ mod TokengiverCampaigns {
         //     self.campaign.write(campaign_address, campaign);
         // }
 
-        fn donate(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256, token_id: u256
-        ) {
+        fn donate(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             let donor = get_caller_address();
 
             // update denotation balance for a compaign
@@ -246,10 +244,10 @@ mod TokengiverCampaigns {
             // fetch campaign denotion counts and update it
             let prev_count = self.donation_count.read(campaign_address);
             self.donation_count.write(campaign_address, prev_count + 1);
-
+            let campaign = self.campaign.read(campaign_address);
             // save donation details for a compaign
             let donation_details = DonationDetails {
-                campaign_address, token_id, donor_address: donor, amount,
+                campaign_address, token_id: campaign.token_id, donor_address: donor, amount,
             };
             self.donation_details.write((campaign_address, donor), donation_details);
 
@@ -263,7 +261,7 @@ mod TokengiverCampaigns {
                         campaign_address,
                         donor_address: donor,
                         amount: amount,
-                        token_id,
+                        token_id: campaign.token_id,
                         block_timestamp: get_block_timestamp(),
                     }
                 );
@@ -287,7 +285,7 @@ mod TokengiverCampaigns {
 
             let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
 
-            assert(amount <= available_balance, INSUFFICIENT_BALANCE);
+            assert(available_balance >= amount, INSUFFICIENT_BALANCE);
 
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };

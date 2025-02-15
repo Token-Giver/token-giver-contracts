@@ -19,7 +19,7 @@ pub trait ICampaign<TState> {
     fn set_donation_count(ref self: TState, campaign_address: ContractAddress);
     fn set_available_withdrawal(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn set_donations(ref self: TState, campaign_address: ContractAddress, amount: u256);
-    fn donate(ref self: TState, campaign_address: ContractAddress, amount: u256, token_id: u256);
+    fn donate(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn withdraw(ref self: TState, campaign_address: ContractAddress, amount: u256);
     fn upgrade(ref self: TState, new_class_hash: ClassHash);
     fn lock_campaign(ref self: TState, campaign_address: ContractAddress, lock_until: u64);

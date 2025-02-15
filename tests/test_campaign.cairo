@@ -179,7 +179,6 @@ fn test_donate() {
     let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-    let random_id = 1;
 
     let registry_hash = REGISTRY_HASH();
     let implementation_hash = IMPLEMENTATION_HASH();
@@ -208,7 +207,7 @@ fn test_donate() {
 
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
-    token_giver.donate(campaign_address, amount, random_id);
+    token_giver.donate(campaign_address, amount);
     stop_cheat_caller_address(token_giver_address);
     assert(token_giver.get_donations(campaign_address) == amount, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
@@ -251,16 +250,16 @@ fn test_donate_event_emission() {
 
     // donate
     start_cheat_caller_address(token_giver_address, DONOR());
-    token_giver.donate(campaign_address, amount, random_id);
+    token_giver.donate(campaign_address, amount);
     stop_cheat_caller_address(token_giver_address);
-
+    let campagin = token_giver.get_campaign(campaign_address);
     // test DonationMade event emission
     let expected_event = Event::DonationMade(
         DonationMade {
             campaign_address: campaign_address,
             donor_address: DONOR(),
             amount: amount,
-            token_id: random_id,
+            token_id: campagin.token_id,
             block_timestamp: get_block_timestamp(),
         }
     );
@@ -274,7 +273,6 @@ fn test_withdraw() {
     let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-    let random_id = 1;
 
     let registry_hash = REGISTRY_HASH();
     let implementation_hash = IMPLEMENTATION_HASH();
@@ -304,7 +302,7 @@ fn test_withdraw() {
     start_cheat_caller_address(token_giver_address, DONOR());
 
     strk_dispatcher.transfer(campaign_address, 0);
-    token_giver.donate(campaign_address, 0, random_id);
+    token_giver.donate(campaign_address, 0);
     stop_cheat_caller_address(token_giver_address);
     assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
     assert(token_giver.get_donation_count(campaign_address) == 1, 'wrong donation amount');
@@ -331,7 +329,7 @@ fn test_withdraw_event_emission() {
     let (token_giver_address, strk_address, _) = __setup__();
     let token_giver = ICampaignDispatcher { contract_address: token_giver_address };
     let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
-    let random_id = 1;
+  
     let mut spy = spy_events();
 
     let registry_hash = REGISTRY_HASH();
@@ -353,7 +351,7 @@ fn test_withdraw_event_emission() {
     start_cheat_caller_address(token_giver_address, DONOR());
 
     strk_dispatcher.transfer(campaign_address, 0);
-    token_giver.donate(campaign_address, 0, random_id);
+    token_giver.donate(campaign_address, 0);
     stop_cheat_caller_address(token_giver_address);
     //  assert(strk_dispatcher.balance_of(DONOR()) == 0, 'wrong balance');
     assert(token_giver.get_donations(campaign_address) == 0, 'wrong donation amount');
