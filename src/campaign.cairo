@@ -278,22 +278,22 @@ mod TokengiverCampaigns {
 
         fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
             let campaign: Campaign = self.campaign.read(campaign_address);
-            let caller: ContractAddress = get_caller_address();
+            let caller = get_caller_address();
 
             assert(caller == campaign.campaign_owner, NOT_CAMPAIGN_OWNER);
-
-            let available_balance: u256 = self.withdrawal_balance.read(campaign_address);
-
-            assert(amount <= available_balance, INSUFFICIENT_BALANCE);
 
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
 
-            // Convert amount to match STRK decimals (18 decimals)
-            let adjusted_amount: u256 = amount * 1_000000000000000000;
-            let transfer_result = token_dispatcher.transfer(campaign_address, adjusted_amount);
+            let campagin_balance_before = token_dispatcher.balance_of(campaign_address);
+
+            assert(amount <= campagin_balance_before, INSUFFICIENT_BALANCE);
+
+            let transfer_result = token_dispatcher.transfer(caller, amount);
             assert(transfer_result, TRANSFER_FAILED);
-            self.withdrawal_balance.write(campaign_address, available_balance - amount);
+
+            let campagin_balance_after = token_dispatcher.balance_of(campaign_address);
+            self.withdrawal_balance.write(campaign_address, campagin_balance_after);
 
             self
                 .emit(
