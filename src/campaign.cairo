@@ -277,6 +277,7 @@ mod TokengiverCampaigns {
 
 
         fn withdraw(ref self: ContractState, campaign_address: ContractAddress, amount: u256) {
+            // Transfer is executed via the TBA SDK
             let campaign: Campaign = self.campaign.read(campaign_address);
             let caller = get_caller_address();
 
@@ -285,15 +286,9 @@ mod TokengiverCampaigns {
             let token_address = self.strk_address.read();
             let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
 
-            let campagin_balance_before = token_dispatcher.balance_of(campaign_address);
+            let campagin_balance = token_dispatcher.balance_of(campaign_address);
 
-            assert(amount <= campagin_balance_before, INSUFFICIENT_BALANCE);
-
-            let transfer_result = token_dispatcher.transfer(caller, amount);
-            assert(transfer_result, TRANSFER_FAILED);
-
-            let campagin_balance_after = token_dispatcher.balance_of(campaign_address);
-            self.withdrawal_balance.write(campaign_address, campagin_balance_after);
+            self.withdrawal_balance.write(campaign_address, campagin_balance);
 
             self
                 .emit(
@@ -336,7 +331,11 @@ mod TokengiverCampaigns {
         fn get_available_withdrawal(
             self: @ContractState, campaign_address: ContractAddress
         ) -> u256 {
-            self.withdrawal_balance.read(campaign_address)
+            // self.withdrawal_balance.read(campaign_address)
+            let token_address = self.strk_address.read();
+            let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
+
+            token_dispatcher.balance_of(campaign_address)
         }
 
 
