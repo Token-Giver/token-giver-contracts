@@ -115,11 +115,12 @@ fn test_create_campaign() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 5;
 
     // Create campaign with explicit type conversions
     start_cheat_caller_address(token_giver_address, recipient);
     let created_campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
     stop_cheat_caller_address(token_giver_address);
 
     // Get campaign details
@@ -143,11 +144,11 @@ fn test_create_campaign_event_emission() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
-
+    let campaign_id: u256 = 2;
     // create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let created_campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
     stop_cheat_caller_address(token_giver_address);
 
     // get campagin
@@ -162,6 +163,7 @@ fn test_create_campaign_event_emission() {
         CreateCampaign {
             owner: campaign.campaign_owner,
             campaign_address: campaign.campaign_address,
+            campaign_id: campaign_id,
             token_id: campaign.token_id,
             token_giver_nft_address: nft_address,
             nft_token_uri: token_uri,
@@ -185,11 +187,12 @@ fn test_donate() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 3;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 
@@ -228,11 +231,12 @@ fn test_donate_event_emission() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 3;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 
@@ -279,11 +283,12 @@ fn test_withdraw() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 6;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 
@@ -337,11 +342,12 @@ fn test_withdraw_event_emission() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 7;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 
@@ -449,11 +455,12 @@ fn test_is_locked() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 8;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 
@@ -474,12 +481,13 @@ fn test_is_locked() {
 
 //     let salt: felt252 = SALT();
 //     let recipient: ContractAddress = RECIPIENT();
+//     let campaign_id: u256 = 12;
 
 //     //create campaign
 //     start_cheat_caller_address(token_giver_address, RECIPIENT());
 //     let lock_until = get_block_timestamp() + 86400;
 //     let campaign_address = token_giver
-//         .create_campaign(registry_hash, implementation_hash, salt, recipient);
+//         .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 //     token_giver.lock_campaign(campaign_address, lock_until);
 //     stop_cheat_caller_address(token_giver_address);
 
@@ -508,11 +516,12 @@ fn test_lock_campaign_fails_if_not_owner() {
 
     let salt: felt252 = SALT();
     let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 12;
 
     //create campaign
     start_cheat_caller_address(token_giver_address, RECIPIENT());
     let campaign_address = token_giver
-        .create_campaign(registry_hash, implementation_hash, salt, recipient);
+        .create_campaign(registry_hash, implementation_hash, salt, recipient, campaign_id);
 
     stop_cheat_caller_address(token_giver_address);
 

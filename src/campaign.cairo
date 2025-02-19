@@ -97,6 +97,7 @@ mod TokengiverCampaigns {
         #[key]
         campaign_address: ContractAddress,
         token_id: u256,
+        campaign_id: u256,
         nft_token_uri: ByteArray,
         token_giver_nft_address: ContractAddress,
         block_timestamp: u64,
@@ -163,7 +164,8 @@ mod TokengiverCampaigns {
             registry_hash: felt252,
             implementation_hash: felt252,
             salt: felt252,
-            recipient: ContractAddress
+            recipient: ContractAddress,
+            campaign_id: u256,
         ) -> ContractAddress {
             let count: u16 = self.count.read() + 1;
             let token_giver_nft_contract_address = self
@@ -189,23 +191,14 @@ mod TokengiverCampaigns {
                     implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
                 );
 
-            // let max_approval: u256 = u256 {
-            //     low: 0xffffffffffffffffffffffffffffffff, high: 0xffffffffffffffffffffffffffffffff
-            // };
-
-            // let token_address = self.strk_address.read();
-
-            //  let token_dispatcher = IERC20Dispatcher { contract_address: token_address };
-
-            // token_dispatcher.approve(get_caller_address(), max_approval);
-
             let token_uri = token_giver_dispatcher.get_token_uri(token_id);
 
             let new_campaign = Campaign {
                 campaign_address,
                 campaign_owner: get_caller_address(),
                 nft_token_uri: token_uri.clone(),
-                token_id: token_id.clone()
+                token_id: token_id.clone(),
+                campaign_id: campaign_id,
             };
 
             self.campaign.write(campaign_address, new_campaign);
@@ -223,6 +216,7 @@ mod TokengiverCampaigns {
                         owner: recipient,
                         campaign_address,
                         token_id,
+                        campaign_id: campaign_id,
                         token_giver_nft_address: token_giver_nft_contract_address,
                         nft_token_uri: token_uri,
                         block_timestamp: get_block_timestamp(),

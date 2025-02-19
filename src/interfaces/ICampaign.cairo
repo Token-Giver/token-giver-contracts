@@ -11,7 +11,8 @@ pub trait ICampaign<TState> {
         registry_hash: felt252,
         implementation_hash: felt252,
         salt: felt252,
-        recipient: ContractAddress
+        recipient: ContractAddress,
+        campaign_id: u256,
     ) -> ContractAddress;
     // fn set_campaign_metadata_uri(
     //     ref self: TState, campaign_address: ContractAddress, metadata_uri: ByteArray

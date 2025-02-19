@@ -13,6 +13,7 @@ use starknet::ContractAddress;
 #[derive(Drop, Serde, starknet::Store)]
 pub struct Campaign {
     pub campaign_address: ContractAddress,
+    pub campaign_id: u256,
     pub campaign_owner: ContractAddress,
     pub nft_token_uri: ByteArray,
     pub token_id: u256,
