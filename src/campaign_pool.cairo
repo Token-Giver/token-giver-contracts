@@ -33,7 +33,9 @@ mod CampaignPools {
             ContractAddress, (ContractAddress, u256)
         >, // map<Campaign Address, (campaign pool address, amount)>
         campaign_pool_count: u16,
-        campaign_pool_nft_token: Map<ContractAddress, (ContractAddress, u256)>, // (recipient, (campaign_address, token_id));
+        campaign_pool_nft_token: Map<
+            ContractAddress, (ContractAddress, u256)
+        >, // (recipient, (campaign_address, token_id));
         donations: Map<ContractAddress, u256>,
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<
