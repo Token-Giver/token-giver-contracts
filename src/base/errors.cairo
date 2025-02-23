@@ -10,4 +10,7 @@ pub mod Errors {
     pub const INVALID_CAMPAIGN: felt252 = 'TGN: campaign is not owner!';
     pub const INSUFFICIENT_BALANCE: felt252 = 'TGN: insufficient balance!';
     pub const TRANSFER_FAILED: felt252 = 'TGN: transfer failed!';
+    pub const INVALID_CAMPAIGN_ADDRESS: felt252 = 'TGN: invalid campaign address!';
+    pub const INVALID_POOL_ADDRESS: felt252 = 'TGN: invalid pool address!';
+    pub const INVALID_AMOUNT: felt252 = 'TGN: invalid amount!';
 }

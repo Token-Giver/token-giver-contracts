@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+use tokengiver::base::errors::Errors::{INVALID_CAMPAIGN_ADDRESS, INVALID_POOL_ADDRESS, INVALID_AMOUNT};
 
 #[starknet::contract]
 mod CampaignPools {
@@ -143,7 +144,37 @@ mod CampaignPools {
             campaign_address: ContractAddress,
             campaign_pool_address: ContractAddress,
             amount: u256
-        ) {}
+        ) {
+            // Validate that campaign_address exists
+            // This assumes you have a way to check if a campaign address exists
+            // You might need to adapt this validation based on your contract structure
+            let campaign_exists = campaign_address.is_non_zero();
+            assert(campaign_exists, Errors::INVALID_CAMPAIGN_ADDRESS);
+
+            // Validate that campaign_pool_address exists
+            let pool_exists = self.campaign_pool.read(campaign_pool_address).campaign_pool_address.is_non_zero();
+            assert(pool_exists, Errors::INVALID_POOL_ADDRESS);
+            
+            // Validate amount
+            assert(amount > 0, Errors::INVALID_AMOUNT);
+            
+            // Get caller address
+            let recipient = get_caller_address();
+            
+            // Store the application details
+            self.campaign_pool_applications.write(campaign_address, (campaign_pool_address, amount));
+            
+            // Emit event
+            self.emit(
+                ApplicationMade {
+                    campaign_pool_address,
+                    campaign_address,
+                    recipient,
+                    amount,
+                    block_timestamp: get_block_timestamp(),
+                }
+            );
+        }
 
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
