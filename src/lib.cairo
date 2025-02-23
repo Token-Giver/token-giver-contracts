@@ -3,3 +3,4 @@ pub mod interfaces;
 pub mod campaign;
 pub mod base;
 pub mod presets;
+pub mod campaign_pool;
