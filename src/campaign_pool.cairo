@@ -173,17 +173,17 @@ mod CampaignPools {
 
             self.campaign_pool.write(caller, campaign_details);
             self
-            .emit(
-                CreateCampaignPool {
-                    owner: caller,
-                    campaign_pool_address: campaign_address,
-                    token_id,
-                    campaign_pool_id: campaign_pool_count.try_into().unwrap(),
-                    nft_token_uri: " ",
-                    token_giver_nft_address: token_giver_nft_contract_address,
-                    block_timestamp: get_block_timestamp()
-                }
-            );
+                .emit(
+                    CreateCampaignPool {
+                        owner: caller,
+                        campaign_pool_address: campaign_address,
+                        token_id,
+                        campaign_pool_id: campaign_pool_count.try_into().unwrap(),
+                        nft_token_uri: " ",
+                        token_giver_nft_address: token_giver_nft_contract_address,
+                        block_timestamp: get_block_timestamp()
+                    }
+                );
 
             campaign_address
         }
