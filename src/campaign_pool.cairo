@@ -15,6 +15,7 @@ mod CampaignPools {
     use tokengiver::base::types::CampaignPool;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
     use tokengiver::interfaces::ITokenGiverNft::{
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
     };
@@ -28,6 +29,7 @@ mod CampaignPools {
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
 
     // *************************************************************************
@@ -162,30 +164,35 @@ mod CampaignPools {
                 .create_account(
                     implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
                 );
+            let token_uri = nft_contract_dispatcher.get_token_uri(token_id);
             let campaign_details = CampaignPool {
                 campaign_address: campaign_address,
                 campaign_id: campaign_pool_count.try_into().unwrap(),
-                campaign_owner: caller,
-                nft_token_uri: " ",
+                campaign_owner: recipient,
+                nft_token_uri: token_uri.clone(),
                 token_id: token_id,
                 is_closed: false,
             };
 
-            self.campaign_pool.write(caller, campaign_details);
+            self.campaign_pool.write(campaign_address, campaign_details);
             self
                 .emit(
                     CreateCampaignPool {
-                        owner: caller,
+                        owner: recipient,
                         campaign_pool_address: campaign_address,
                         token_id,
                         campaign_pool_id: campaign_pool_count.try_into().unwrap(),
-                        nft_token_uri: " ",
+                        nft_token_uri: token_uri.clone(),
                         token_giver_nft_address: token_giver_nft_contract_address,
                         block_timestamp: get_block_timestamp()
                     }
                 );
 
             campaign_address
+        }
+
+        fn get_campaign(self: @ContractState, campaign_address: ContractAddress) -> CampaignPool {
+            self.campaign_pool.read(campaign_address)
         }
 
         fn donate_campaign_pool(
@@ -198,9 +205,9 @@ mod CampaignPools {
             campaign_pool_address: ContractAddress,
             amount: u256
         ) {}
-        // fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-    //     self.ownable.assert_only_owner();
-    //     self.upgradeable.upgrade(new_class_hash);
-    // }
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
     }
 }
