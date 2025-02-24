@@ -175,6 +175,8 @@ mod CampaignPools {
             };
 
             self.campaign_pool.write(campaign_address, campaign_details);
+            self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
+
             self
                 .emit(
                     CreateCampaignPool {
