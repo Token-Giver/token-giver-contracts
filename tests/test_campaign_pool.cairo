@@ -170,6 +170,5 @@ fn test_create_campaign_pool_event_emission() {
             block_timestamp: get_block_timestamp() //g
         }
     );
-
     // spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
 }
