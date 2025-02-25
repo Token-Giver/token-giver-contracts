@@ -164,7 +164,7 @@ fn test_create_campaign_pool_event_emission() {
             owner: recipient, // a
             campaign_pool_address: campaign.campaign_address, // b
             token_id: campaign.token_id, // c
-            campaign_pool_id: campaign.campaign_id, // d
+            campaign_pool_id: campaign.campaign_pool_id, // d
             nft_token_uri: token_uri.clone(), // e
             token_giver_nft_address: nft_address, // f
             block_timestamp: get_block_timestamp() //g
