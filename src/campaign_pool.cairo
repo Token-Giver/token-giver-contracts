@@ -167,7 +167,7 @@ mod CampaignPools {
             let token_uri = nft_contract_dispatcher.get_token_uri(token_id);
             let campaign_details = CampaignPool {
                 campaign_address: campaign_address,
-                campaign_id: campaign_pool_count.try_into().unwrap(),
+                campaign_pool_id: campaign_pool_count.try_into().unwrap(),
                 campaign_owner: recipient,
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id,
