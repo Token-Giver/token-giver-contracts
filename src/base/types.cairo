@@ -28,4 +28,3 @@ pub struct CampaignPool {
     pub token_id: u256,
     pub is_closed: bool,
 }
-
