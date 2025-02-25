@@ -12,8 +12,16 @@ mod CampaignPools {
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ICampaignPool::ICampaignPool;
+    use tokengiver::base::types::CampaignPool;
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
+    use tokengiver::interfaces::ITokenGiverNft::{
+        ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
+    };
+    use tokengiver::interfaces::IRegistry::{
+        IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher
+    };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -21,6 +29,7 @@ mod CampaignPools {
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
 
     // *************************************************************************
@@ -103,6 +112,14 @@ mod CampaignPools {
     }
 
 
+    #[derive(Drop, Copy, Serde, starknet::Store)]
+    pub struct DonationDetails {
+        campaign_address: ContractAddress,
+        token_id: u256,
+        donor_address: ContractAddress,
+        amount: u256,
+    }
+
     // *************************************************************************
     //                              CONSTRUCTOR
     // *************************************************************************
@@ -132,7 +149,53 @@ mod CampaignPools {
             salt: felt252,
             recipient: ContractAddress,
             campaign_pool_id: u256,
-        ) -> ContractAddress {}
+        ) -> ContractAddress {
+            let caller = get_caller_address();
+            let campaign_pool_count: u16 = self.campaign_pool_count.read() + 1;
+            let token_giver_nft_contract_address = self.token_giver_nft_contract_address.read();
+            let nft_contract_dispatcher = ITokenGiverNftDispatcher {
+                contract_address: token_giver_nft_contract_address
+            };
+            let token_id: u256 = nft_contract_dispatcher.mint_token_giver_nft(get_caller_address());
+
+            let campaign_address = IRegistryLibraryDispatcher {
+                class_hash: registry_hash.try_into().unwrap()
+            }
+                .create_account(
+                    implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
+                );
+            let token_uri = nft_contract_dispatcher.get_token_uri(token_id);
+            let campaign_details = CampaignPool {
+                campaign_address: campaign_address,
+                campaign_pool_id: campaign_pool_count.try_into().unwrap(),
+                campaign_owner: recipient,
+                nft_token_uri: token_uri.clone(),
+                token_id: token_id,
+                is_closed: false,
+            };
+
+            self.campaign_pool.write(campaign_address, campaign_details);
+            self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
+
+            self
+                .emit(
+                    CreateCampaignPool {
+                        owner: recipient,
+                        campaign_pool_address: campaign_address,
+                        token_id,
+                        campaign_pool_id: campaign_pool_count.try_into().unwrap(),
+                        nft_token_uri: token_uri.clone(),
+                        token_giver_nft_address: token_giver_nft_contract_address,
+                        block_timestamp: get_block_timestamp()
+                    }
+                );
+
+            campaign_address
+        }
+
+        fn get_campaign(self: @ContractState, campaign_address: ContractAddress) -> CampaignPool {
+            self.campaign_pool.read(campaign_address)
+        }
 
         fn donate_campaign_pool(
             ref self: ContractState, campaign_pool_address: ContractAddress, amount: u256
@@ -144,7 +207,6 @@ mod CampaignPools {
             campaign_pool_address: ContractAddress,
             amount: u256
         ) {}
-
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
