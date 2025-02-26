@@ -11,6 +11,7 @@ mod CampaignPools {
         syscalls::deploy_syscall, SyscallResultTrait, syscalls, class_hash::class_hash_const,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
+    use tokengiver::base::errors::Errors;
     use tokengiver::interfaces::ICampaignPool::ICampaignPool;
     use tokengiver::base::types::CampaignPool;
     use openzeppelin::access::ownable::OwnableComponent;
@@ -206,7 +207,51 @@ mod CampaignPools {
             campaign_address: ContractAddress,
             campaign_pool_address: ContractAddress,
             amount: u256
-        ) {}
+        ) {
+            // Get caller address to identify who is applying
+            let caller = get_caller_address();
+
+            // Validate that the campaign exists
+            // We can do this by attempting to read campaign data and asserting it's valid
+            let campaign_exists = self
+                .campaign_pool
+                .read(campaign_address)
+                .campaign_address != starknet::contract_address_const::<0>();
+            assert(campaign_exists, Errors::INVALID_CAMPAIGN_ADDRESS);
+
+            // Validate that the campaign pool exists
+            let pool_exists = self
+                .campaign_pool
+                .read(campaign_pool_address)
+                .campaign_address != starknet::contract_address_const::<0>();
+            assert(pool_exists, Errors::INVALID_POOL_ADDRESS);
+
+            // Ensure amount is valid (not zero)
+            assert(amount > 0, Errors::INVALID_AMOUNT);
+
+            // Store the application in the mapping
+            self
+                .campaign_pool_applications
+                .write(campaign_address, (campaign_pool_address, amount));
+
+            // Emit an application event
+            self
+                .emit(
+                    ApplicationMade {
+                        campaign_pool_address: campaign_pool_address,
+                        campaign_address: campaign_address,
+                        recipient: caller,
+                        amount: amount,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
+        fn get_campaign_application(
+            self: @ContractState, campaign_address: ContractAddress
+        ) -> (ContractAddress, u256) {
+            self.campaign_pool_applications.read(campaign_address)
+        }
+
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);

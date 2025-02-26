@@ -26,4 +26,8 @@ pub trait ICampaignPool<TState> {
         amount: u256
     );
     fn upgrade(ref self: TState, new_class_hash: ClassHash);
+
+    fn get_campaign_application(
+        self: @TState, campaign_address: ContractAddress
+    ) -> (ContractAddress, u256);
 }
