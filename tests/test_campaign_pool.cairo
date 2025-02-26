@@ -3,6 +3,7 @@ use snforge_std::{
     DeclareResultTrait, spy_events, EventSpyAssertionsTrait, get_class_hash
 };
 
+
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
@@ -13,7 +14,9 @@ use tokengiver::interfaces::ICampaignPool::{
 use tokengiver::interfaces::ITokenGiverNft::{
     ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
 };
-use tokengiver::campaign_pool::CampaignPools::{Event, DonationMade, CreateCampaignPool};
+use tokengiver::campaign_pool::CampaignPools::{
+    Event, DonationMade, CreateCampaignPool, ApplicationMade
+};
 use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
 fn REGISTRY_HASH() -> felt252 {
@@ -130,7 +133,7 @@ fn test_create_campaign_pool() {
 
 
 #[test]
-#[fork("Mainnet")]
+#[fork("SEPOLIA_LATEST")]
 fn test_create_campaign_pool_event_emission() {
     // Get the initial setup
     let (token_giver_address, _, nft_address) = __setup__();
@@ -171,4 +174,151 @@ fn test_create_campaign_pool_event_emission() {
         }
     );
     // spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+#[test]
+#[fork("SEPOLIA_LATEST")]
+fn test_apply_to_campaign_pool_success() {
+    // Set up a campaign pool and a campaign
+    let (token_giver_address, strk_address, nft_address) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let mut spy = spy_events();
+
+    // Create the required parameters for campaign pool
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 10;
+    let pool_id: u256 = 11;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+
+    // Create campaign with different salt
+    let campaign_salt: felt252 = 'campaign_salt';
+    let campaign_address = token_giver
+        .create_campaign_pool(
+            registry_hash, implementation_hash, campaign_salt, recipient, campaign_id
+        );
+    stop_cheat_caller_address(token_giver_address);
+
+    // Amount to request
+    let amount: u256 = 100;
+
+    // Apply to campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    token_giver.apply_to_campaign_pool(campaign_address, campaign_pool_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Verify application was stored correctly
+    start_cheat_caller_address(token_giver_address, recipient);
+    let (stored_pool, stored_amount) = token_giver.get_campaign_application(campaign_address);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(stored_pool == campaign_pool_address, 'Wrong pool address stored');
+    assert(stored_amount == amount, 'Wrong amount stored');
+
+    // Check event emission
+    let expected_event = Event::ApplicationMade(
+        ApplicationMade {
+            campaign_pool_address: campaign_pool_address,
+            campaign_address: campaign_address,
+            recipient: recipient,
+            amount: amount,
+            block_timestamp: get_block_timestamp(),
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
+#[test]
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: invalid campaign address!',))]
+fn test_apply_with_invalid_campaign_address() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let pool_id: u256 = 12;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Use an invalid campaign address
+    let invalid_campaign_address: ContractAddress = starknet::contract_address_const::<0x123>();
+    let amount: u256 = 100;
+
+    // This should panic with "TGN: invalid campaign address!"
+    start_cheat_caller_address(token_giver_address, recipient);
+    token_giver.apply_to_campaign_pool(invalid_campaign_address, campaign_pool_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+}
+
+#[test]
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: invalid pool address!',))]
+fn test_apply_with_invalid_pool_address() {
+    // Set up a campaign
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 13;
+
+    // Create campaign
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Use an invalid pool address
+    let invalid_pool_address: ContractAddress = starknet::contract_address_const::<0x456>();
+    let amount: u256 = 100;
+
+    // This should panic with "TGN: invalid pool address!"
+    start_cheat_caller_address(token_giver_address, recipient);
+    token_giver.apply_to_campaign_pool(campaign_address, invalid_pool_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+}
+
+#[test]
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: invalid amount!',))]
+fn test_apply_with_zero_amount() {
+    // Set up a campaign pool and a campaign
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt1: felt252 = 'salt1';
+    let salt2: felt252 = 'salt2';
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 14;
+    let pool_id: u256 = 15;
+
+    // Create campaign pool and campaign
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt1, recipient, pool_id);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt2, recipient, campaign_id);
+
+    // Try to apply with zero amount, should fail
+    let zero_amount: u256 = 0;
+    token_giver.apply_to_campaign_pool(campaign_address, campaign_pool_address, zero_amount);
+    stop_cheat_caller_address(token_giver_address);
 }
