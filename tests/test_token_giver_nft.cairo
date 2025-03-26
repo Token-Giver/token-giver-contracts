@@ -2,10 +2,9 @@ use core::num::traits::zero::Zero;
 use core::starknet::SyscallResultTrait;
 use core::traits::{TryInto, Into};
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
-// use snforge_std::{declare, ContractClassTrait, CheatTarget, start_prank, stop_prank,};
 use snforge_std::{
     declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
+    DeclareResultTrait, EventSpyAssertionsTrait,
 };
 use openzeppelin::{token::erc721::interface::{ERC721ABIDispatcher, ERC721ABIDispatcherTrait}};
 
@@ -20,56 +19,13 @@ const USER_ONE: felt252 = 'BOB';
 
 fn __setup__() -> ContractAddress {
     // deploy  events
-    let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
+    let nft_class_hash = declare("NFTForCampaignOnTokenGiver").unwrap().contract_class();
 
     let mut events_constructor_calldata: Array<felt252> = array![ADMIN];
     let (nft_contract_address, _) = nft_class_hash.deploy(@events_constructor_calldata).unwrap();
 
     return (nft_contract_address);
 }
-
-fn deploy_campaign_contract() -> ContractAddress {
-    let nft_class_hash = declare("TokenGiverNFT").unwrap().contract_class();
-
-    let mut constructor_calldata: Array<felt252> = ArrayTrait::new();
-    nft_class_hash.serialize(ref constructor_calldata);
-
-    let contract = declare("TokengiverCampaign").unwrap().contract_class();
-    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
-
-    contract_address
-}
-
-// #[test]
-// #[fork("SEPOLIA_LATEST")]
-// fn test_create_campaign() {
-//     let campaign_contract_address = deploy_campaign_contract();
-//     let campaign_contract = ICampaignDispatcher { contract_address: campaign_contract_address };
-
-//     // Using Sepolia V2 (Audited contract)
-
-//     let registry_hash: ClassHash = starknet::class_hash_const::<
-//         0x046163525551f5a50ed027548e86e1ad023c44e0eeb0733f0dab2fb1fdc31ed0
-//     >();
-//     let registry_hash_in_felt: felt252 = registry_hash.into();
-
-//     let implementation_hash = starknet::class_hash_const::<
-//         0x45d67b8590561c9b54e14dd309c9f38c4e2c554dd59414021f9d079811621bd
-//     >();
-//     let implementation_hash_in_felt: felt252 = implementation_hash.into();
-
-//     let salt = get_block_timestamp();
-//     let salt_in_felt: felt252 = salt.into();
-
-//     let recipient: ContractAddress = starknet::contract_address_const::<
-//         0x01526C92E52c337b7B04d1307c6080Ece3a17071F2F0295197cEa8d077c6FF80
-//     >();
-
-//     campaign_contract
-//         .create_campaign(
-//             registry_hash_in_felt, implementation_hash_in_felt, salt_in_felt, recipient
-//         );
-// }
 
 // #[test]
 // fn test_metadata() {
