@@ -30,4 +30,8 @@ pub trait ICampaignPool<TState> {
     fn get_campaign_application(
         self: @TState, campaign_address: ContractAddress
     ) -> (ContractAddress, u256);
+    fn get_votes_count(
+        self: @TState, campaign_pool_address: ContractAddress,
+        campaign_address: ContractAddress
+    ) -> u64;
 }

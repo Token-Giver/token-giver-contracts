@@ -51,6 +51,8 @@ mod CampaignPools {
         donation_details: Map<
             (ContractAddress, ContractAddress), DonationDetails
         >, // map((campaign pool address, Campaign Address), donation_details)
+        campaign_votes: Map<(ContractAddress, ContractAddress), u64>,
+        // map((campaign_pool_address, campaign_address), num_of_votes)
         strk_address: ContractAddress,
         token_giver_nft_contract_address: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
@@ -250,6 +252,13 @@ mod CampaignPools {
             self: @ContractState, campaign_address: ContractAddress
         ) -> (ContractAddress, u256) {
             self.campaign_pool_applications.read(campaign_address)
+        }
+
+        fn get_votes_count(
+            self: @ContractState, campaign_pool_address: ContractAddress,
+            campaign_address: ContractAddress
+        ) -> u64 {
+            self.campaign_votes.read((campaign_pool_address, campaign_address))
         }
 
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
