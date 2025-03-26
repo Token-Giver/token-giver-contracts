@@ -5,6 +5,7 @@ mod TokengiverCampaign {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
+    use core::num::traits::Zero;
     use core::traits::TryInto;
     use starknet::{
         ContractAddress, get_caller_address, get_block_timestamp, ClassHash,
@@ -31,6 +32,12 @@ mod TokengiverCampaign {
         amount: u256,
     }
 
+    #[derive(Drop, Copy, Serde, starknet::Store)]
+    pub struct VoteData {
+        campaign_address: ContractAddress,
+        donor: ContractAddress
+    }
+
     // *************************************************************************
     //                              STORAGE
     // *************************************************************************
@@ -45,6 +52,8 @@ mod TokengiverCampaign {
         donation_details: Map<ContractAddress, DonationDetails>,
         erc20_token: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
+        donor_votes: Map<(ContractAddress, ContractAddress), VoteData>,
+        campaign_votes_count: Map<ContractAddress, u256>
     }
 
     // *************************************************************************
@@ -56,6 +65,7 @@ mod TokengiverCampaign {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
+        DonorVoted: DonorVoted
     }
 
     #[derive(Drop, starknet::Event)]
@@ -84,6 +94,13 @@ mod TokengiverCampaign {
         amount: u256,
         token_id: u256,
         block_timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DonorVoted {
+        campaign_address: ContractAddress,
+        donor_address: ContractAddress,
+        time: u64
     }
 
     // *************************************************************************
@@ -287,6 +304,37 @@ mod TokengiverCampaign {
                         amount: amount,
                         token_id,
                         block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
+
+        fn vote_project(
+            ref self: ContractState,
+            campaign_pool_address: ContractAddress,
+            campaign_address: ContractAddress
+        ) {
+            let caller = get_caller_address();
+
+            let user_votes = self.donor_votes.read((caller, campaign_address));
+            let caller_donation = self.donations.read(caller);
+            let campaign_count = self.campaign_votes_count.read(campaign_address);
+
+            assert(caller_donation > 0, 'Caller not donor');
+
+            assert(user_votes.donor.is_non_zero(), 'Voted already');
+
+            let new_vote = VoteData { campaign_address: campaign_address, donor: caller };
+
+            self.donor_votes.write((caller, campaign_address), new_vote);
+
+            self.campaign_votes_count.write(campaign_address, campaign_count + 1);
+
+            self
+                .emit(
+                    DonorVoted {
+                        campaign_address: campaign_address,
+                        donor_address: caller,
+                        time: get_block_timestamp()
                     }
                 );
         }
