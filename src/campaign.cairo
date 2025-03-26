@@ -8,7 +8,8 @@ mod TokengiverCampaigns {
     use core::traits::TryInto;
     use starknet::{
         ContractAddress, get_caller_address, get_block_timestamp, ClassHash, get_contract_address,
-        syscalls::deploy_syscall, SyscallResultTrait, syscalls, class_hash::class_hash_const,
+        contract_address_const, syscalls::deploy_syscall, SyscallResultTrait, syscalls,
+        class_hash::class_hash_const,
         storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
     };
     use tokengiver::interfaces::ITokenGiverNft::{
@@ -18,6 +19,9 @@ mod TokengiverCampaigns {
         IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher
     };
     use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use tokengiver::interfaces::IGovernanceToken::{
+        IGovernanceTokenDispatcher, IGovernanceTokenDispatcherTrait
+    };
     use tokengiver::interfaces::ICampaign::ICampaign;
     use tokengiver::base::types::Campaign;
     use tokengiver::base::errors::Errors::{
@@ -248,6 +252,17 @@ mod TokengiverCampaigns {
             let prev_withdrawal = self.withdrawal_balance.read(campaign_address);
             self.withdrawal_balance.write(campaign_address, prev_withdrawal + amount);
 
+            // get instance of the governance token
+            let governance_token = IGovernanceTokenDispatcher {
+                contract_address: contract_address_const::<0x0, // change to real address
+                >()
+            };
+
+            let time = get_block_timestamp();
+
+            // mint governance token to donor
+            governance_token.mint(donor, amount);
+
             self
                 .emit(
                     DonationMade {
@@ -255,7 +270,7 @@ mod TokengiverCampaigns {
                         donor_address: donor,
                         amount: amount,
                         token_id: campaign.token_id,
-                        block_timestamp: get_block_timestamp(),
+                        block_timestamp: time,
                     }
                 );
         }
