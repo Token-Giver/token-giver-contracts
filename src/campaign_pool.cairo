@@ -255,7 +255,8 @@ mod CampaignPools {
         }
 
         fn get_votes_count(
-            self: @ContractState, campaign_pool_address: ContractAddress,
+            self: @ContractState,
+            campaign_pool_address: ContractAddress,
             campaign_address: ContractAddress
         ) -> u64 {
             self.campaign_votes.read((campaign_pool_address, campaign_address))
