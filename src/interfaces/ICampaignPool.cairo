@@ -1,4 +1,4 @@
-use starknet::{ContractAddress, ClassHash};
+use starknet::{ClassHash, ContractAddress};
 use tokengiver::base::types::CampaignPool;
 // *************************************************************************
 //                              INTERFACE of TOKEN GIVER CAMPAIGN POOL
@@ -23,11 +23,15 @@ pub trait ICampaignPool<TState> {
         ref self: TState,
         campaign_address: ContractAddress,
         campaign_pool_address: ContractAddress,
-        amount: u256
+        amount: u256,
     );
     fn upgrade(ref self: TState, new_class_hash: ClassHash);
 
+    fn vote_project(
+        ref self: TState, campaign_pool_address: ContractAddress, campaign_address: ContractAddress,
+    );
+
     fn get_campaign_application(
-        self: @TState, campaign_address: ContractAddress
+        self: @TState, campaign_address: ContractAddress,
     ) -> (ContractAddress, u256);
 }

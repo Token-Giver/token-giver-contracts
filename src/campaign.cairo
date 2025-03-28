@@ -6,33 +6,36 @@ mod TokengiverCampaigns {
     //                            IMPORT
     // *************************************************************************
     use core::traits::TryInto;
-    use starknet::{
-        ContractAddress, get_caller_address, get_block_timestamp, ClassHash, get_contract_address,
-        contract_address_const, syscalls::deploy_syscall, SyscallResultTrait, syscalls,
-        class_hash::class_hash_const,
-        storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess}
-    };
-    use tokengiver::interfaces::ITokenGiverNft::{
-        ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
-    };
-    use tokengiver::interfaces::IRegistry::{
-        IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher
-    };
-    use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use tokengiver::interfaces::IGovernanceToken::{
-        IGovernanceTokenDispatcher, IGovernanceTokenDispatcherTrait
-    };
-    use tokengiver::interfaces::ICampaign::ICampaign;
-    use tokengiver::base::types::Campaign;
-    use tokengiver::base::errors::Errors::{
-        NOT_CAMPAIGN_OWNER, INSUFFICIENT_BALANCE, TRANSFER_FAILED, NOT_CONTRACT_OWNER
-    };
-    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::upgrades::interface::IUpgradeable;
+    use starknet::class_hash::class_hash_const;
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::syscalls::deploy_syscall;
+    use starknet::{
+        ClassHash, ContractAddress, SyscallResultTrait, contract_address_const, get_block_timestamp,
+        get_caller_address, get_contract_address, syscalls,
+    };
     use token_bound_accounts::interfaces::ILockable::{
-        ILockableDispatcher, ILockableDispatcherTrait
+        ILockableDispatcher, ILockableDispatcherTrait,
+    };
+    use tokengiver::base::errors::Errors::{
+        INSUFFICIENT_BALANCE, NOT_CAMPAIGN_OWNER, NOT_CONTRACT_OWNER, TRANSFER_FAILED,
+    };
+    use tokengiver::base::types::Campaign;
+    use tokengiver::interfaces::ICampaign::ICampaign;
+    use tokengiver::interfaces::IERC721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use tokengiver::interfaces::IGovernanceToken::{
+        IGovernanceTokenDispatcher, IGovernanceTokenDispatcherTrait,
+    };
+    use tokengiver::interfaces::IRegistry::{
+        IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher,
+    };
+    use tokengiver::interfaces::ITokenGiverNft::{
+        ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait,
     };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -65,7 +68,7 @@ mod TokengiverCampaigns {
         donations: Map<ContractAddress, u256>,
         donation_count: Map<ContractAddress, u16>,
         donation_details: Map<
-            (ContractAddress, ContractAddress), DonationDetails
+            (ContractAddress, ContractAddress), DonationDetails,
         >, // map((), donation_details)
         campaign_nft_token: Map<ContractAddress, (ContractAddress, u256)>,
         strk_address: ContractAddress,
@@ -144,7 +147,7 @@ mod TokengiverCampaigns {
         token_giver_nft_class_hash: ClassHash,
         token_giver_nft_contract_address: ContractAddress,
         strk_address: ContractAddress,
-        owner: ContractAddress
+        owner: ContractAddress,
     ) {
         self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
         self.token_giver_nft_contract_address.write(token_giver_nft_contract_address);
@@ -178,7 +181,7 @@ mod TokengiverCampaigns {
 
             //set dispatcher
             let token_giver_dispatcher = ITokenGiverNftDispatcher {
-                contract_address: token_giver_nft_contract_address
+                contract_address: token_giver_nft_contract_address,
             };
 
             // mint the nft
@@ -189,10 +192,10 @@ mod TokengiverCampaigns {
             let token_id = token_giver_dispatcher.get_user_token_id(get_caller_address());
 
             let campaign_address = IRegistryLibraryDispatcher {
-                class_hash: registry_hash.try_into().unwrap()
+                class_hash: registry_hash.try_into().unwrap(),
             }
                 .create_account(
-                    implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt
+                    implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt,
                 );
 
             let token_uri = token_giver_dispatcher.get_token_uri(token_id);
@@ -224,7 +227,7 @@ mod TokengiverCampaigns {
                         token_giver_nft_address: token_giver_nft_contract_address,
                         nft_token_uri: token_uri,
                         block_timestamp: get_block_timestamp(),
-                    }
+                    },
                 );
 
             campaign_address
@@ -254,8 +257,8 @@ mod TokengiverCampaigns {
 
             // get instance of the governance token
             let governance_token = IGovernanceTokenDispatcher {
-                contract_address: contract_address_const::<0x0, // change to real address
-                >()
+                contract_address: contract_address_const::<0x0 // change to real address
+                >(),
             };
 
             let time = get_block_timestamp();
@@ -271,7 +274,7 @@ mod TokengiverCampaigns {
                         amount: amount,
                         token_id: campaign.token_id,
                         block_timestamp: time,
-                    }
+                    },
                 );
         }
 
@@ -306,18 +309,18 @@ mod TokengiverCampaigns {
                         recipient: caller,
                         amount: amount,
                         block_timestamp: get_block_timestamp(),
-                    }
+                    },
                 );
         }
 
         fn set_available_withdrawal(
-            ref self: ContractState, campaign_address: ContractAddress, amount: u256
+            ref self: ContractState, campaign_address: ContractAddress, amount: u256,
         ) {
             self.withdrawal_balance.write(campaign_address, amount);
         }
 
         fn lock_campaign(
-            ref self: ContractState, campaign_address: ContractAddress, lock_until: u64
+            ref self: ContractState, campaign_address: ContractAddress, lock_until: u64,
         ) {
             // Get campaign details
             let campaign: Campaign = self.campaign.read(campaign_address);
@@ -338,7 +341,7 @@ mod TokengiverCampaigns {
             self.donations.read(campaign_address)
         }
         fn get_available_withdrawal(
-            self: @ContractState, campaign_address: ContractAddress
+            self: @ContractState, campaign_address: ContractAddress,
         ) -> u256 {
             // self.withdrawal_balance.read(campaign_address)
             let token_address = self.strk_address.read();
@@ -366,7 +369,7 @@ mod TokengiverCampaigns {
         fn update_token_giver_nft(
             ref self: ContractState,
             token_giver_nft_class_hash: ClassHash,
-            token_giver_nft_contract_address: ContractAddress
+            token_giver_nft_contract_address: ContractAddress,
         ) {
             // This function can only be called by the owner
             self.ownable.assert_only_owner();

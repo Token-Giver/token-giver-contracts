@@ -1,4 +1,4 @@
-use starknet::{ContractAddress, ClassHash};
+use starknet::{ClassHash, ContractAddress};
 use tokengiver::base::types::Campaign;
 // *************************************************************************
 //                              INTERFACE of TOKEN GIVER NFT
@@ -27,7 +27,7 @@ pub trait ICampaign<TState> {
     fn update_token_giver_nft(
         ref self: TState,
         token_giver_nft_class_hash: ClassHash,
-        token_giver_nft_contract_address: ContractAddress
+        token_giver_nft_contract_address: ContractAddress,
     );
 
     //     fn approve_campaign_spending(ref self: TState, campaign_address: ContractAddress);
