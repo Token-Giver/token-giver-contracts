@@ -8,6 +8,8 @@ use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTr
 
 use starknet::{ContractAddress, ClassHash, get_block_timestamp};
 
+use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+
 use tokengiver::interfaces::ICampaignPool::{
     ICampaignPool, ICampaignPoolDispatcher, ICampaignPoolDispatcherTrait
 };
@@ -15,7 +17,7 @@ use tokengiver::interfaces::ITokenGiverNft::{
     ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
 };
 use tokengiver::campaign_pool::CampaignPools::{
-    Event, DonationMade, CreateCampaignPool, ApplicationMade
+    Event, DonationMade, CreateCampaignPool, ApplicationMade, contract_state_for_testing
 };
 use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
@@ -321,4 +323,41 @@ fn test_apply_with_zero_amount() {
     let zero_amount: u256 = 0;
     token_giver.apply_to_campaign_pool(campaign_address, campaign_pool_address, zero_amount);
     stop_cheat_caller_address(token_giver_address);
+}
+
+#[test]
+#[fork("Mainnet")]
+fn test_get_votes_count() {
+    // Test the get votes count dispatcher function
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    // add votes for a campaign
+    let campaign_address: ContractAddress = 'campaign'.try_into().unwrap();
+    let campaign_pool_address: ContractAddress = 'campaign_pool'.try_into().unwrap();
+    let votes_count = token_giver.get_votes_count(campaign_pool_address, campaign_address);
+    // check whether votes exist
+    assert(votes_count == 0, 'Invalid votes count');
+}
+
+
+#[test]
+#[fork("Mainnet")]
+fn test_get_votes_count_with_votes() {
+    // Test the get_votes_counts with value
+    let mut state = contract_state_for_testing();
+    let votes_count: u64 = 4;
+
+    // define test values
+    let campaign_address: ContractAddress = 'campaign'.try_into().unwrap();
+    let campaign_pool_address: ContractAddress = 'campaign_pool'.try_into().unwrap();
+
+    // write value to storage
+    state.campaign_votes.write((campaign_pool_address, campaign_address), votes_count);
+
+    // check votes count
+    assert(
+        state.get_votes_count(campaign_pool_address, campaign_address) == votes_count,
+        'Invalid votes count'
+    );
 }
