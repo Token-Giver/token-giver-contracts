@@ -60,6 +60,8 @@ mod CampaignPools {
         token_giver_nft_contract_address: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
         token_giver_nft_address: ContractAddress,
+        governance_token_address: ContractAddress,  
+    tokens_per_donation: u256,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -103,6 +105,7 @@ mod CampaignPools {
         nft_token_uri: ByteArray,
         token_giver_nft_address: ContractAddress,
         block_timestamp: u64,
+        
     }
 
     #[derive(Drop, starknet::Event)]
@@ -145,19 +148,24 @@ mod CampaignPools {
     // *************************************************************************
     //                              CONSTRUCTOR
     // *************************************************************************
+    
     #[constructor]
-    fn constructor(
-        ref self: ContractState,
-        token_giver_nft_class_hash: ClassHash,
-        token_giver_nft_contract_address: ContractAddress,
-        strk_address: ContractAddress,
-        owner: ContractAddress,
-    ) {
-        self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
-        self.token_giver_nft_contract_address.write(token_giver_nft_contract_address);
-        self.strk_address.write(strk_address);
-        self.ownable.initializer(owner);
-    }
+fn constructor(
+    ref self: ContractState,
+    token_giver_nft_class_hash: ClassHash,
+    token_giver_nft_contract_address: ContractAddress,
+    strk_address: ContractAddress,
+    governance_token_address: ContractAddress,
+    tokens_per_donation: u256,
+    owner: ContractAddress,
+) {
+    self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
+    self.token_giver_nft_contract_address.write(token_giver_nft_contract_address);
+    self.strk_address.write(strk_address);
+    self.governance_token_address.write(governance_token_address);
+    self.tokens_per_donation.write(tokens_per_donation);
+    self.ownable.initializer(owner);
+}
 
     // *************************************************************************
     //                            EXTERNAL FUNCTIONS
@@ -194,6 +202,8 @@ mod CampaignPools {
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id,
                 is_closed: false,
+                voting_start_time: 0,  // Initially 0, to be set later
+        voting_end_time: 0,
             };
 
             self.campaign_pool.write(campaign_address, campaign_details);
