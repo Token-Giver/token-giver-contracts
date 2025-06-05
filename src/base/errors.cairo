@@ -13,4 +13,9 @@ pub mod Errors {
     pub const INVALID_CAMPAIGN_ADDRESS: felt252 = 'TGN: invalid campaign address!';
     pub const INVALID_POOL_ADDRESS: felt252 = 'TGN: invalid pool address!';
     pub const INVALID_AMOUNT: felt252 = 'TGN: invalid amount!';
+    pub const ZERO_ADDRESS: felt252 = 'TGN: zero address not allowed';
+    pub const INVALID_REGISTRY_HASH: felt252 = 'TGN: invalid registry hash';
+    pub const INVALID_IMPLEMENTATION_HASH: felt252 = 'TGN: invalid impl hash';
+    pub const CAMPAIGN_POOL_EXISTS: felt252 = 'TGN: campaign pool exists';
+    pub const MAX_POOLS_EXCEEDED: felt252 = 'TGN: max pools exceeded';
 }

@@ -60,6 +60,11 @@ mod CampaignPools {
         token_giver_nft_contract_address: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
         token_giver_nft_address: ContractAddress,
+       // To track existing campaign pool IDs
+        campaign_pool_id_exists: Map<u256, bool>, 
+       // To track campaign pools per user 
+        user_campaign_pool_count: Map<ContractAddress, u16>, 
+        max_pools_per_user: u16,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -152,11 +157,37 @@ mod CampaignPools {
         token_giver_nft_contract_address: ContractAddress,
         strk_address: ContractAddress,
         owner: ContractAddress,
+        max_pools_per_user: u16,
     ) {
         self.token_giver_nft_class_hash.write(token_giver_nft_class_hash);
         self.token_giver_nft_contract_address.write(token_giver_nft_contract_address);
         self.strk_address.write(strk_address);
         self.ownable.initializer(owner);
+        self.max_pools_per_user.write(max_pools_per_user);
+    }
+
+    // *************************************************************************
+    //                            VALIDATION HELPERS
+    // *************************************************************************
+    #[generate_trait]
+    impl ValidationImpl of ValidationTrait {
+        fn validate_address(address: ContractAddress) {
+            assert(!address.is_zero(), Errors::ZERO_ADDRESS);
+        }
+        
+        fn validate_hash(hash: felt252) {
+            assert(hash != 0, Errors::INVALID_REGISTRY_HASH);
+        }
+        fn validate_pool_exists(self: @ContractState, pool_id: u256) {
+            let existing_pool = self.campaign_pool_id_exists.read(pool_id);
+            assert(existing_pool == true, Errors::CAMPAIGN_POOL_EXISTS);
+        }
+
+        fn max_pools_per_user(self: @ContractState, user: ContractAddress) {
+            let user_pools = self.user_campaign_pool_count.read(user);
+            let max_pools = self.max_pools_per_user.read();
+            assert(user_pools < max_pools, Errors::MAX_POOLS_EXCEEDED);
+        }
     }
 
     // *************************************************************************
@@ -173,6 +204,14 @@ mod CampaignPools {
             campaign_pool_id: u256,
         ) -> ContractAddress {
             let caller = get_caller_address();
+
+            // --- Input Validations ---
+            ValidationImpl::validate_address(recipient);
+            ValidationImpl::validate_hash(registry_hash);
+            ValidationImpl::validate_hash(implementation_hash);
+            ValidationImpl::validate_pool_exists(@self, campaign_pool_id);
+            ValidationImpl::max_pools_per_user(@self, caller);
+
             let campaign_pool_count: u16 = self.campaign_pool_count.read() + 1;
             let token_giver_nft_contract_address = self.token_giver_nft_contract_address.read();
             let nft_contract_dispatcher = ITokenGiverNftDispatcher {
@@ -198,6 +237,10 @@ mod CampaignPools {
 
             self.campaign_pool.write(campaign_address, campaign_details);
             self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
+            let user_pools = self.user_campaign_pool_count.read(caller);
+            self.user_campaign_pool_count.write(recipient, user_pools + 1);
+            self.campaign_pool_id_exists.write(campaign_pool_id, true);
+        
 
             self
                 .emit(
