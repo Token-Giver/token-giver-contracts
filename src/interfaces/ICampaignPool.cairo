@@ -1,5 +1,5 @@
 use starknet::{ClassHash, ContractAddress};
-use tokengiver::base::types::CampaignPool;
+use tokengiver::base::types::{CampaignPool, CampaignState, CampaignTimeline, CampaignStats};
 // *************************************************************************
 //                              INTERFACE of TOKEN GIVER CAMPAIGN POOL
 // *************************************************************************
@@ -34,4 +34,24 @@ pub trait ICampaignPool<TState> {
     fn get_campaign_application(
         self: @TState, campaign_address: ContractAddress,
     ) -> (ContractAddress, u256);
+
+    fn close_campaign_pool(
+        ref self: TState, campaign_pool_address: ContractAddress,
+    );
+
+    fn set_campaign_deadlines(
+        ref self: TState,
+        campaign_address: ContractAddress,
+        campaign_timeline: CampaignTimeline,
+    );
+
+    fn get_campaign_pool_stats(
+        self: @TState, campaign_pool_address: ContractAddress,
+    ) -> CampaignStats;
+
+    fn update_campaign_state(
+        ref self: TState,
+        campaign_address: ContractAddress,
+        new_state: CampaignState,
+    );
 }

@@ -322,3 +322,35 @@ fn test_apply_with_zero_amount() {
     token_giver.apply_to_campaign_pool(campaign_address, campaign_pool_address, zero_amount);
     stop_cheat_caller_address(token_giver_address);
 }
+
+#[test]
+#[fork("Mainnet")]
+fn test_close_campaign_pool() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let pool_id: u256 = 16;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Close the campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    token_giver.close_campaign_pool(campaign_pool_address);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Verify the pool is closed
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign = token_giver.get_campaign(campaign_pool_address);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(campaign.is_closed == true, 'Campaign pool should be closed');
+}
