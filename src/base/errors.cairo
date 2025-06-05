@@ -18,4 +18,10 @@ pub mod Errors {
     pub const INVALID_IMPLEMENTATION_HASH: felt252 = 'TGN: invalid impl hash';
     pub const CAMPAIGN_POOL_EXISTS: felt252 = 'TGN: campaign pool exists';
     pub const MAX_POOLS_EXCEEDED: felt252 = 'TGN: max pools exceeded';
+
+    pub const CAMPAIGN_POOL_CLOSED: felt252 = 'TGN: campaign pool is closed!';
+    pub const CAMPAIGN_NOT_IN_POOL: felt252 = 'TGN: not in pool!';
+    pub const VOTING_PERIOD_ENDED: felt252 = 'TGN: voting ended!';
+    pub const VOTING_NOT_STARTED: felt252 =  'TGN: not started yet!';
+  
 }

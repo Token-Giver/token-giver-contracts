@@ -65,6 +65,8 @@ mod CampaignPools {
        // To track campaign pools per user 
         user_campaign_pool_count: Map<ContractAddress, u16>, 
         max_pools_per_user: u16,
+        // New storage for campaign-pool relationships
+        campaign_to_pool: Map<ContractAddress, ContractAddress>, // Maps campaign address to its pool
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
@@ -188,6 +190,35 @@ mod CampaignPools {
             let max_pools = self.max_pools_per_user.read();
             assert(user_pools < max_pools, Errors::MAX_POOLS_EXCEEDED);
         }
+
+        fn validate_pool_active(self: @ContractState, pool_address: ContractAddress) {
+            let pool = self.campaign_pool.read(pool_address);
+            assert(!pool.is_closed, Errors::CAMPAIGN_POOL_CLOSED);
+        }
+
+        fn validate_campaign_in_pool(
+            self: @ContractState, 
+            campaign_address: ContractAddress, 
+            pool_address: ContractAddress
+        ) {
+            let campaign_pool = self.campaign_to_pool.read(campaign_address);
+            assert(campaign_pool == pool_address, Errors::CAMPAIGN_NOT_IN_POOL);
+        }
+
+    
+        fn validate_voting_period(self: @ContractState, pool_address: ContractAddress) {
+            let pool = self.campaign_pool.read(pool_address);
+            let current_time = get_block_timestamp();
+            
+            // Check if voting has started
+            assert(current_time >= pool.voting_start_time, Errors::VOTING_NOT_STARTED);
+            // Check if voting has ended
+            assert(current_time <= pool.voting_end_time, Errors::VOTING_PERIOD_ENDED);
+        }
+
+       
+
+        
     }
 
     // *************************************************************************
@@ -233,10 +264,14 @@ mod CampaignPools {
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id,
                 is_closed: false,
+                voting_start_time: get_block_timestamp(), // Set default voting period
+                voting_end_time: get_block_timestamp() + 604800, // Default 7 days voting period (in seconds)
             };
 
             self.campaign_pool.write(campaign_address, campaign_details);
             self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
+            // Record campaign-pool relationship - Map campaign address to its pool address
+            self.campaign_to_pool.write(campaign_address, campaign_address); 
             let user_pools = self.user_campaign_pool_count.read(caller);
             self.user_campaign_pool_count.write(recipient, user_pools + 1);
             self.campaign_pool_id_exists.write(campaign_pool_id, true);
@@ -265,6 +300,14 @@ mod CampaignPools {
         ) {
             let caller = get_caller_address();
 
+             // Validate pool is active
+             ValidationImpl::validate_pool_active(@self, campaign_pool_address);
+            // Validate campaign belongs to the specified pool
+            ValidationImpl::validate_campaign_in_pool(@self, campaign_address, campaign_pool_address);
+           // Validate voting period
+            ValidationImpl::validate_voting_period(@self, campaign_pool_address);
+
+            
             let user_votes = self.donor_votes.read((caller, campaign_address));
             let caller_donation = self.donations.read(caller);
             let campaign_count = self.campaign_votes_count.read(campaign_address);
@@ -328,6 +371,9 @@ mod CampaignPools {
             self
                 .campaign_pool_applications
                 .write(campaign_address, (campaign_pool_address, amount));
+
+            // Map the campaign to its pool
+            self.campaign_to_pool.write(campaign_address, campaign_pool_address);
 
             // Emit an application event
             self

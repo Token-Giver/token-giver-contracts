@@ -27,5 +27,7 @@ pub struct CampaignPool {
     pub nft_token_uri: ByteArray,
     pub token_id: u256,
     pub is_closed: bool,
+    pub voting_start_time: u64,
+    pub voting_end_time: u64,
 }
 
