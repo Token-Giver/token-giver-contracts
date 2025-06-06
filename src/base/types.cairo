@@ -29,5 +29,8 @@ pub struct CampaignPool {
     pub is_closed: bool,
     pub voting_start_time: u64,
     pub voting_end_time: u64,
+    pub accepts_applications: bool,
+    pub application_deadline: u64,
+    pub max_application_amount: u256,
 }
 

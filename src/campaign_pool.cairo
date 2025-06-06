@@ -71,8 +71,10 @@ mod CampaignPools {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        donor_votes: Map<(ContractAddress, ContractAddress), VoteData>,
+        donor_votes: Map<(ContractAddress, ContractAddress), VoteData>, 
         campaign_votes_count: Map<ContractAddress, u256>,
+        // New storage for tracking applications
+        campaign_applied_to_pool: Map<(ContractAddress, ContractAddress), bool>, // Maps (campaign, pool) to application status
     }
 
 
@@ -217,8 +219,28 @@ mod CampaignPools {
         }
 
        
-
-        
+        fn validate_can_apply(
+            self: @ContractState,
+            campaign_address: ContractAddress,
+            campaign_pool_address: ContractAddress,
+            amount: u256,
+        ) {
+            let pool = self.campaign_pool.read(campaign_pool_address);
+            let current_time = get_block_timestamp();
+            
+            // Check if pool accepts applications
+            assert(pool.accepts_applications, Errors::APPLICATIONS_NOT_ACCEPTED);
+            
+            // Check application deadline
+            assert(current_time <= pool.application_deadline, Errors::APPLICATION_DEADLINE_PASSED);
+            
+            // Check if campaign has already applied
+            let has_applied = self.campaign_applied_to_pool.read((campaign_address, campaign_pool_address));
+            assert(!has_applied, Errors::ALREADY_APPLIED);
+            
+            // Validate application amount
+            assert(amount <= pool.max_application_amount, Errors::AMOUNT_EXCEEDS_MAX);
+        }
     }
 
     // *************************************************************************
@@ -233,6 +255,9 @@ mod CampaignPools {
             salt: felt252,
             recipient: ContractAddress,
             campaign_pool_id: u256,
+            voting_duration: u64, // Duration in seconds for the voting period
+            application_duration: u64, // Duration in seconds for the application period
+            max_application_amount: u256, // Maximum amount that can be requested in applications
         ) -> ContractAddress {
             let caller = get_caller_address();
 
@@ -257,6 +282,7 @@ mod CampaignPools {
                     implementation_hash, token_giver_nft_contract_address, token_id.clone(), salt,
                 );
             let token_uri = nft_contract_dispatcher.get_token_uri(token_id);
+            let current_time = get_block_timestamp();
             let campaign_details = CampaignPool {
                 campaign_address: campaign_address,
                 campaign_pool_id: campaign_pool_count.try_into().unwrap(),
@@ -264,8 +290,11 @@ mod CampaignPools {
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id,
                 is_closed: false,
-                voting_start_time: get_block_timestamp(), // Set default voting period
-                voting_end_time: get_block_timestamp() + 604800, // Default 7 days voting period (in seconds)
+                voting_start_time: current_time + application_duration, // Voting starts after application period
+                voting_end_time: current_time + application_duration + voting_duration, // Total duration
+                accepts_applications: true,
+                application_deadline: current_time + application_duration,
+                max_application_amount: max_application_amount,
             };
 
             self.campaign_pool.write(campaign_address, campaign_details);
@@ -350,29 +379,26 @@ mod CampaignPools {
             let caller = get_caller_address();
 
             // Validate that the campaign exists
-            // We can do this by attempting to read campaign data and asserting it's valid
             let campaign_exists = self
                 .campaign_pool
                 .read(campaign_address)
                 .campaign_address != starknet::contract_address_const::<0>();
             assert(campaign_exists, Errors::INVALID_CAMPAIGN_ADDRESS);
 
-            // Validate that the campaign pool exists
+            // Validate that the campaign pool exists and is valid for applications
             let pool_exists = self
                 .campaign_pool
                 .read(campaign_pool_address)
                 .campaign_address != starknet::contract_address_const::<0>();
             assert(pool_exists, Errors::INVALID_POOL_ADDRESS);
 
-            // Ensure amount is valid (not zero)
-            assert(amount > 0, Errors::INVALID_AMOUNT);
+            // Validate application requirements
+            ValidationImpl::validate_can_apply(@self, campaign_address, campaign_pool_address, amount);
 
-            // Store the application in the mapping
-            self
-                .campaign_pool_applications
-                .write(campaign_address, (campaign_pool_address, amount));
-
-            // Map the campaign to its pool
+            // Store the application
+            self.campaign_pool_applications.write(campaign_address, (campaign_pool_address, amount));
+            // Mark campaign as having applied to this pool
+            self.campaign_applied_to_pool.write((campaign_address, campaign_pool_address), true);
             self.campaign_to_pool.write(campaign_address, campaign_pool_address);
 
             // Emit an application event

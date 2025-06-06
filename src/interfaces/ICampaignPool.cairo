@@ -13,6 +13,9 @@ pub trait ICampaignPool<TState> {
         salt: felt252,
         recipient: ContractAddress,
         campaign_pool_id: u256,
+        voting_duration: u64,
+        application_duration: u64,
+        max_application_amount: u256,
     ) -> ContractAddress;
 
     fn get_campaign(self: @TState, campaign_address: ContractAddress) -> CampaignPool;
