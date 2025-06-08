@@ -6,7 +6,7 @@ use snforge_std::{
 
 use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
-use starknet::{ContractAddress, ClassHash, get_block_timestamp};
+use starknet::{ContractAddress, ClassHash, get_block_timestamp, contract_address_const};
 
 use tokengiver::interfaces::ICampaignPool::{
     ICampaignPool, ICampaignPoolDispatcher, ICampaignPoolDispatcherTrait
@@ -321,4 +321,108 @@ fn test_apply_with_zero_amount() {
     let zero_amount: u256 = 0;
     token_giver.apply_to_campaign_pool(campaign_address, campaign_pool_address, zero_amount);
     stop_cheat_caller_address(token_giver_address);
+}
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+#[should_panic(expected: ('TGN: invalid amount!',))]
+fn test_donate_campaign_pool_invalid_amount() {
+    let (token_giver_address, strk_address, nft_address) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT(), 5);
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 35; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
+    stop_cheat_caller_address(strk_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    token_giver.donate_campaign_pool(campaign_pool_address, 0);
+}
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+#[should_panic(expected: ('TGN: invalid pool address!',))]
+fn test_donate_campaign_pool_invalid_pool_addr() {
+    let (token_giver_address, strk_address, nft_address) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+
+    // Create campaign with explicit type conversions
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT(), 1);
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 35; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    assert(strk_dispatcher.balance_of(DONOR()) >= amount, 'strk bal too low');
+    stop_cheat_caller_address(strk_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    stop_cheat_caller_address(strk_address);
+
+    token_giver.donate_campaign_pool(contract_address_const::<0>(), amount);
+}
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+fn test_donate_campaign_pool_ok() {
+    let (token_giver_address, strk_address, nft_address) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+
+    // Create campaign with explicit type conversions
+    start_cheat_caller_address(token_giver_address, RECIPIENT());
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(REGISTRY_HASH(), IMPLEMENTATION_HASH(), SALT(), RECIPIENT(), 1);
+    stop_cheat_caller_address(token_giver_address);
+
+    /// Transfer STRK to Donor
+    start_cheat_caller_address(strk_address, OWNER());
+    let amount = 35; // 
+    strk_dispatcher.transfer(DONOR(), amount);
+    let donor_balance_before = strk_dispatcher.balance_of(DONOR());
+    assert(donor_balance_before >= amount, 'strk bal too low');
+    stop_cheat_caller_address(strk_address);
+
+    let campaign_pool_balance_before = strk_dispatcher.balance_of(campaign_pool_address);
+
+    // approve allowance
+    start_cheat_caller_address(strk_address, DONOR());
+    strk_dispatcher.approve(token_giver_address, amount);
+    let allowance = strk_dispatcher.allowance(DONOR(), token_giver_address);
+    stop_cheat_caller_address(strk_address);
+
+    start_cheat_caller_address(token_giver_address, DONOR());
+    token_giver.donate_campaign_pool(campaign_pool_address, amount);
+    stop_cheat_caller_address(token_giver_address);
+
+    let campaign_pool = token_giver.get_campaign(campaign_pool_address);
+
+    let donor_balance_after = strk_dispatcher.balance_of(DONOR());
+    let campaign_pool_balance_after = strk_dispatcher.balance_of(campaign_pool_address);
+
+    // confirm right amount was transferred
+    assert(donor_balance_after == donor_balance_before - amount, 'wrong donor balance after');
+    assert(
+        campaign_pool_balance_after == campaign_pool_balance_before + amount,
+        'wrong TGN balance after'
+    );
+    assert(campaign_pool.is_closed == false, 'should not be closed');
 }
