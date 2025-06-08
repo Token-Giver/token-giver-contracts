@@ -15,10 +15,13 @@ use tokengiver::interfaces::ITokenGiverNft::{
     ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
 };
 use tokengiver::campaign_pool::CampaignPools::{
-    Event, DonationMade, CreateCampaignPool, ApplicationMade, CampaignDeadlineSet, CampaignStateUpdated,
+    Event, DonationMade, CreateCampaignPool, ApplicationMade, CampaignDeadlineSet,
+    CampaignStateUpdated,
 };
 
-use tokengiver::base::types::{CampaignTimeline, CampaignState, CampaignStats, Campaign, CampaignPool};
+use tokengiver::base::types::{
+    CampaignTimeline, CampaignState, CampaignStats, Campaign, CampaignPool
+};
 use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
 fn REGISTRY_HASH() -> felt252 {
@@ -539,3 +542,68 @@ fn test_set_campaign_deadlines_not_owner() {
     stop_cheat_caller_address(token_giver_address);
 }
 
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+fn test_update_campaign_state_success() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let mut spy = spy_events();
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 23;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+
+    // Update campaign state to Active (assuming this is a valid state)
+    let new_state = CampaignState::Active; // Adjust based on your enum
+    token_giver.update_campaign_state(campaign_address, new_state);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Check event emission
+    let expected_event = Event::CampaignStateUpdated(
+        CampaignStateUpdated {
+            campaign_address: campaign_address,
+            new_state: new_state,
+            block_timestamp: get_block_timestamp(),
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
+#[test]
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: not campaign owner!',))]
+fn test_update_campaign_state_not_owner() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 24;
+
+    // Create campaign pool as recipient
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Try to update state as different user (not owner)
+    let not_owner: ContractAddress = DONOR();
+    let new_state = CampaignState::Active;
+
+    start_cheat_caller_address(token_giver_address, not_owner);
+    token_giver.update_campaign_state(campaign_address, new_state);
+    stop_cheat_caller_address(token_giver_address);
+}
