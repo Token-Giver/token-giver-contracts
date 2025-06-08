@@ -60,21 +60,25 @@ mod CampaignPools {
         token_giver_nft_contract_address: ContractAddress,
         token_giver_nft_class_hash: ClassHash,
         token_giver_nft_address: ContractAddress,
-       // To track existing campaign pool IDs
-        campaign_pool_id_exists: Map<u256, bool>, 
-       // To track campaign pools per user 
-        user_campaign_pool_count: Map<ContractAddress, u16>, 
+        // To track existing campaign pool IDs
+        campaign_pool_id_exists: Map<u256, bool>,
+        // To track campaign pools per user
+        user_campaign_pool_count: Map<ContractAddress, u16>,
         max_pools_per_user: u16,
         // New storage for campaign-pool relationships
-        campaign_to_pool: Map<ContractAddress, ContractAddress>, // Maps campaign address to its pool
+        campaign_to_pool: Map<
+            ContractAddress, ContractAddress
+        >, // Maps campaign address to its pool
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        donor_votes: Map<(ContractAddress, ContractAddress), VoteData>, 
+        donor_votes: Map<(ContractAddress, ContractAddress), VoteData>,
         campaign_votes_count: Map<ContractAddress, u256>,
         // New storage for tracking applications
-        campaign_applied_to_pool: Map<(ContractAddress, ContractAddress), bool>, // Maps (campaign, pool) to application status
+        campaign_applied_to_pool: Map<
+            (ContractAddress, ContractAddress), bool
+        >, // Maps (campaign, pool) to application status
     }
 
 
@@ -178,7 +182,7 @@ mod CampaignPools {
         fn validate_address(address: ContractAddress) {
             assert(!address.is_zero(), Errors::ZERO_ADDRESS);
         }
-        
+
         fn validate_hash(hash: felt252) {
             assert(hash != 0, Errors::INVALID_REGISTRY_HASH);
         }
@@ -199,26 +203,24 @@ mod CampaignPools {
         }
 
         fn validate_campaign_in_pool(
-            self: @ContractState, 
-            campaign_address: ContractAddress, 
-            pool_address: ContractAddress
+            self: @ContractState, campaign_address: ContractAddress, pool_address: ContractAddress
         ) {
             let campaign_pool = self.campaign_to_pool.read(campaign_address);
             assert(campaign_pool == pool_address, Errors::CAMPAIGN_NOT_IN_POOL);
         }
 
-    
+
         fn validate_voting_period(self: @ContractState, pool_address: ContractAddress) {
             let pool = self.campaign_pool.read(pool_address);
             let current_time = get_block_timestamp();
-            
+
             // Check if voting has started
             assert(current_time >= pool.voting_start_time, Errors::VOTING_NOT_STARTED);
             // Check if voting has ended
             assert(current_time <= pool.voting_end_time, Errors::VOTING_PERIOD_ENDED);
         }
 
-       
+
         fn validate_can_apply(
             self: @ContractState,
             campaign_address: ContractAddress,
@@ -227,17 +229,19 @@ mod CampaignPools {
         ) {
             let pool = self.campaign_pool.read(campaign_pool_address);
             let current_time = get_block_timestamp();
-            
+
             // Check if pool accepts applications
             assert(pool.accepts_applications, Errors::APPLICATIONS_NOT_ACCEPTED);
-            
+
             // Check application deadline
             assert(current_time <= pool.application_deadline, Errors::APPLICATION_DEADLINE_PASSED);
-            
+
             // Check if campaign has already applied
-            let has_applied = self.campaign_applied_to_pool.read((campaign_address, campaign_pool_address));
+            let has_applied = self
+                .campaign_applied_to_pool
+                .read((campaign_address, campaign_pool_address));
             assert(!has_applied, Errors::ALREADY_APPLIED);
-            
+
             // Validate application amount
             assert(amount <= pool.max_application_amount, Errors::AMOUNT_EXCEEDS_MAX);
         }
@@ -290,8 +294,11 @@ mod CampaignPools {
                 nft_token_uri: token_uri.clone(),
                 token_id: token_id,
                 is_closed: false,
-                voting_start_time: current_time + application_duration, // Voting starts after application period
-                voting_end_time: current_time + application_duration + voting_duration, // Total duration
+                voting_start_time: current_time
+                    + application_duration, // Voting starts after application period
+                voting_end_time: current_time
+                    + application_duration
+                    + voting_duration, // Total duration
                 accepts_applications: true,
                 application_deadline: current_time + application_duration,
                 max_application_amount: max_application_amount,
@@ -300,11 +307,10 @@ mod CampaignPools {
             self.campaign_pool.write(campaign_address, campaign_details);
             self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
             // Record campaign-pool relationship - Map campaign address to its pool address
-            self.campaign_to_pool.write(campaign_address, campaign_address); 
+            self.campaign_to_pool.write(campaign_address, campaign_address);
             let user_pools = self.user_campaign_pool_count.read(caller);
             self.user_campaign_pool_count.write(recipient, user_pools + 1);
             self.campaign_pool_id_exists.write(campaign_pool_id, true);
-        
 
             self
                 .emit(
@@ -329,14 +335,15 @@ mod CampaignPools {
         ) {
             let caller = get_caller_address();
 
-             // Validate pool is active
-             ValidationImpl::validate_pool_active(@self, campaign_pool_address);
+            // Validate pool is active
+            ValidationImpl::validate_pool_active(@self, campaign_pool_address);
             // Validate campaign belongs to the specified pool
-            ValidationImpl::validate_campaign_in_pool(@self, campaign_address, campaign_pool_address);
-           // Validate voting period
+            ValidationImpl::validate_campaign_in_pool(
+                @self, campaign_address, campaign_pool_address
+            );
+            // Validate voting period
             ValidationImpl::validate_voting_period(@self, campaign_pool_address);
 
-            
             let user_votes = self.donor_votes.read((caller, campaign_address));
             let caller_donation = self.donations.read(caller);
             let campaign_count = self.campaign_votes_count.read(campaign_address);
@@ -393,12 +400,16 @@ mod CampaignPools {
             assert(pool_exists, Errors::INVALID_POOL_ADDRESS);
 
             // Validate application requirements
-            ValidationImpl::validate_can_apply(@self, campaign_address, campaign_pool_address, amount);
-           // Ensure amount is valid (not zero)
+            ValidationImpl::validate_can_apply(
+                @self, campaign_address, campaign_pool_address, amount
+            );
+            // Ensure amount is valid (not zero)
             assert(amount > 0, Errors::INVALID_AMOUNT);
-            
+
             // Store the application
-            self.campaign_pool_applications.write(campaign_address, (campaign_pool_address, amount));
+            self
+                .campaign_pool_applications
+                .write(campaign_address, (campaign_pool_address, amount));
             // Mark campaign as having applied to this pool
             self.campaign_applied_to_pool.write((campaign_address, campaign_pool_address), true);
             self.campaign_to_pool.write(campaign_address, campaign_pool_address);

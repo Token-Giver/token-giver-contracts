@@ -26,5 +26,4 @@ pub mod Errors {
     pub const APPLICATION_DEADLINE_PASSED: felt252 = 'TGN: deadline passed';
     pub const ALREADY_APPLIED: felt252 = 'TGN: campaign already applied';
     pub const AMOUNT_EXCEEDS_MAX: felt252 = 'TGN: amount exceeds max allowed';
-
 }
