@@ -20,7 +20,7 @@ mod CampaignPools {
         get_contract_address, syscalls,
     };
     use tokengiver::base::errors::Errors;
-    use tokengiver::base::types::CampaignPool;
+    use tokengiver::base::types::{CampaignPool, CampaignState, CampaignTimeline, CampaignStats};
     use tokengiver::interfaces::ICampaignPool::ICampaignPool;
     use tokengiver::interfaces::IRegistry::{
         IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher,
@@ -68,6 +68,9 @@ mod CampaignPools {
         upgradeable: UpgradeableComponent::Storage,
         donor_votes: Map<(ContractAddress, ContractAddress), VoteData>,
         campaign_votes_count: Map<ContractAddress, u256>,
+        campaign_timeline: Map<ContractAddress, CampaignTimeline>,
+        campaign_pool_stats: Map<ContractAddress, CampaignStats>,
+        campaign_state: Map<ContractAddress, CampaignState>,
     }
 
 
@@ -81,6 +84,9 @@ mod CampaignPools {
         DonationMade: DonationMade,
         ApplicationMade: ApplicationMade,
         DonorVoted: DonorVoted,
+        CampaignClosed: CampaignClosed,
+        CampaignStateUpdated: CampaignStateUpdated,
+        CampaignDeadlineSet: CampaignDeadlineSet,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -129,6 +135,28 @@ mod CampaignPools {
         block_timestamp: u64,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct CampaignClosed {
+        #[key]
+        campaign_pool_address: ContractAddress,
+        block_timestamp: u64,
+    }
+    #[derive(Drop, starknet::Event)]
+    pub struct CampaignStateUpdated {
+        #[key]
+        campaign_address: ContractAddress,
+        new_state: CampaignState,
+        block_timestamp: u64,
+    }
+    #[derive(Drop, starknet::Event)]
+    pub struct CampaignDeadlineSet {
+        #[key]
+        campaign_address: ContractAddress,
+        application_deadline: u64,
+        voting_deadline: u64,
+        funding_deadline: u64,
+        created_at: u64,
+    }
 
     #[derive(Drop, Copy, Serde, starknet::Store)]
     pub struct DonationDetails {
@@ -143,6 +171,7 @@ mod CampaignPools {
         campaign_address: ContractAddress,
         donor: ContractAddress,
     }
+
 
     // *************************************************************************
     //                              CONSTRUCTOR
@@ -201,6 +230,8 @@ mod CampaignPools {
             self.campaign_pool.write(campaign_address, campaign_details);
             self.campaign_pool_nft_token.write(recipient, (campaign_address, token_id));
 
+            self.update_campaign_state(campaign_address, CampaignState::Active,);
+
             self
                 .emit(
                     CreateCampaignPool {
@@ -223,6 +254,10 @@ mod CampaignPools {
             campaign_address: ContractAddress,
         ) {
             let caller = get_caller_address();
+            assert(
+                self.campaign_state.read(campaign_address) == CampaignState::VotingPhase,
+                Errors::INVALID_CAMPAIGN
+            );
 
             let user_votes = self.donor_votes.read((caller, campaign_address));
             let caller_donation = self.donations.read(caller);
@@ -367,6 +402,98 @@ mod CampaignPools {
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
+        }
+
+        fn close_campaign_pool(ref self: ContractState, campaign_pool_address: ContractAddress,) {
+            let campaign_pool = self.campaign_pool.read(campaign_pool_address);
+            assert(!campaign_pool.is_closed, Errors::CAMPAIGN_POOL_ALREADY_CLOSED);
+            assert(
+                campaign_pool.campaign_owner == get_caller_address(), Errors::NOT_CAMPAIGN_OWNER,
+            );
+            assert(
+                self.campaign_state.read(campaign_pool.campaign_address) != CampaignState::Closed,
+                Errors::CAMPAIGN_POOL_ALREADY_CLOSED
+            );
+
+            // Update the campaign pool state to closed
+            let mut updated_campaign_pool = campaign_pool;
+            updated_campaign_pool.is_closed = true;
+            self.campaign_pool.write(campaign_pool_address, updated_campaign_pool);
+            self
+                .campaign_state
+                .write(
+                    self.campaign_pool.read(campaign_pool_address).campaign_address,
+                    CampaignState::Closed,
+                );
+
+            // Emit the CampaignChanged event
+            self
+                .emit(
+                    CampaignStateUpdated {
+                        campaign_address: self
+                            .campaign_pool
+                            .read(campaign_pool_address)
+                            .campaign_address,
+                        new_state: CampaignState::Closed,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
+
+        fn set_campaign_deadlines(
+            ref self: ContractState,
+            campaign_address: ContractAddress,
+            campaign_timeline: CampaignTimeline,
+        ) {
+            // Ensure the caller is the campaign owner
+            let campaign_pool = self.campaign_pool.read(campaign_address);
+            assert(
+                campaign_pool.campaign_owner == get_caller_address(), Errors::NOT_CAMPAIGN_OWNER,
+            );
+
+            // Store the campaign timeline
+            self.campaign_timeline.write(campaign_address, campaign_timeline);
+
+            // Emit the CampaignDeadlineSet event
+            self
+                .emit(
+                    CampaignDeadlineSet {
+                        campaign_address: campaign_address,
+                        application_deadline: campaign_timeline.application_deadline,
+                        voting_deadline: campaign_timeline.voting_deadline,
+                        funding_deadline: campaign_timeline.funding_deadline,
+                        created_at: campaign_timeline.created_at,
+                    }
+                );
+        }
+
+        fn get_campaign_pool_stats(
+            self: @ContractState, campaign_pool_address: ContractAddress,
+        ) -> CampaignStats {
+            self.campaign_pool_stats.read(campaign_pool_address)
+        }
+
+        fn update_campaign_state(
+            ref self: ContractState, campaign_address: ContractAddress, new_state: CampaignState,
+        ) {
+            // Ensure the caller is the campaign owner
+            let campaign_pool = self.campaign_pool.read(campaign_address);
+            assert(
+                campaign_pool.campaign_owner == get_caller_address(), Errors::NOT_CAMPAIGN_OWNER,
+            );
+
+            // Update the campaign state
+            self.campaign_state.write(campaign_address, new_state);
+
+            // Emit the CampaignStateUpdated event
+            self
+                .emit(
+                    CampaignStateUpdated {
+                        campaign_address: campaign_address,
+                        new_state: new_state,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
         }
     }
 }

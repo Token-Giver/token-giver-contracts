@@ -15,7 +15,12 @@ use tokengiver::interfaces::ITokenGiverNft::{
     ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait
 };
 use tokengiver::campaign_pool::CampaignPools::{
-    Event, DonationMade, CreateCampaignPool, ApplicationMade
+    Event, DonationMade, CreateCampaignPool, ApplicationMade, CampaignDeadlineSet,
+    CampaignStateUpdated,
+};
+
+use tokengiver::base::types::{
+    CampaignTimeline, CampaignState, CampaignStats, Campaign, CampaignPool
 };
 use token_bound_accounts::interfaces::ILockable::{ILockableDispatcher, ILockableDispatcherTrait};
 
@@ -324,6 +329,37 @@ fn test_apply_with_zero_amount() {
 }
 
 #[test]
+#[fork("Mainnet")]
+fn test_close_campaign_pool() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let pool_id: u256 = 16;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_pool_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Close the campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    token_giver.close_campaign_pool(campaign_pool_address);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Verify the pool is closed
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign = token_giver.get_campaign(campaign_pool_address);
+    stop_cheat_caller_address(token_giver_address);
+
+    assert(campaign.is_closed == true, 'Campaign pool should be closed');
+}
+
 #[fork("SEPOLIA_LATEST")]
 #[should_panic(expected: ('TGN: invalid amount!',))]
 fn test_donate_campaign_pool_invalid_amount() {
@@ -425,4 +461,149 @@ fn test_donate_campaign_pool_ok() {
         'wrong TGN balance after'
     );
     assert(campaign_pool.is_closed == false, 'should not be closed');
+}
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+fn test_set_campaign_deadlines_success() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let mut spy = spy_events();
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 20;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+
+    // Set campaign deadlines
+    let current_time = get_block_timestamp();
+    let campaign_timeline = CampaignTimeline {
+        application_deadline: current_time + 86400,
+        voting_deadline: current_time + 172800,
+        funding_deadline: current_time + 259200,
+        created_at: current_time,
+    };
+
+    token_giver.set_campaign_deadlines(campaign_address, campaign_timeline);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Check event emission
+    let expected_event = Event::CampaignDeadlineSet(
+        CampaignDeadlineSet {
+            campaign_address: campaign_address,
+            application_deadline: campaign_timeline.application_deadline,
+            voting_deadline: campaign_timeline.voting_deadline,
+            funding_deadline: campaign_timeline.funding_deadline,
+            created_at: campaign_timeline.created_at,
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: not campaign owner!',))]
+fn test_set_campaign_deadlines_not_owner() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 21;
+
+    // Create campaign pool as recipient
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Try to set deadlines as different user (not owner)
+    let not_owner: ContractAddress = DONOR();
+    let current_time = get_block_timestamp();
+    let campaign_timeline = CampaignTimeline {
+        application_deadline: current_time + 86400,
+        voting_deadline: current_time + 172800,
+        funding_deadline: current_time + 259200,
+        created_at: current_time,
+    };
+
+    start_cheat_caller_address(token_giver_address, not_owner);
+    token_giver.set_campaign_deadlines(campaign_address, campaign_timeline);
+    stop_cheat_caller_address(token_giver_address);
+}
+
+
+#[test]
+#[fork("SEPOLIA_LATEST")]
+fn test_update_campaign_state_success() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+    let mut spy = spy_events();
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 23;
+
+    // Create campaign pool
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+
+    // Update campaign state to Active (assuming this is a valid state)
+    let new_state = CampaignState::Active; // Adjust based on your enum
+    token_giver.update_campaign_state(campaign_address, new_state);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Check event emission
+    let expected_event = Event::CampaignStateUpdated(
+        CampaignStateUpdated {
+            campaign_address: campaign_address,
+            new_state: new_state,
+            block_timestamp: get_block_timestamp(),
+        }
+    );
+
+    spy.assert_emitted(@array![(token_giver.contract_address, expected_event)]);
+}
+
+#[test]
+#[fork("Mainnet")]
+#[should_panic(expected: ('TGN: not campaign owner!',))]
+fn test_update_campaign_state_not_owner() {
+    // Set up a campaign pool
+    let (token_giver_address, _, _) = __setup__();
+    let token_giver = ICampaignPoolDispatcher { contract_address: token_giver_address };
+
+    let registry_hash = REGISTRY_HASH();
+    let implementation_hash = IMPLEMENTATION_HASH();
+    let salt: felt252 = SALT();
+    let recipient: ContractAddress = RECIPIENT();
+    let campaign_id: u256 = 24;
+
+    // Create campaign pool as recipient
+    start_cheat_caller_address(token_giver_address, recipient);
+    let campaign_address = token_giver
+        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+    stop_cheat_caller_address(token_giver_address);
+
+    // Try to update state as different user (not owner)
+    let not_owner: ContractAddress = DONOR();
+    let new_state = CampaignState::Active;
+
+    start_cheat_caller_address(token_giver_address, not_owner);
+    token_giver.update_campaign_state(campaign_address, new_state);
+    stop_cheat_caller_address(token_giver_address);
 }
