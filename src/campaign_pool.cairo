@@ -184,7 +184,7 @@ mod CampaignPools {
         }
         fn validate_pool_exists(self: @ContractState, pool_id: u256) {
             let existing_pool = self.campaign_pool_id_exists.read(pool_id);
-            assert(existing_pool == true, Errors::CAMPAIGN_POOL_EXISTS);
+            assert(!existing_pool, Errors::CAMPAIGN_POOL_EXISTS);
         }
 
         fn max_pools_per_user(self: @ContractState, user: ContractAddress) {
@@ -394,7 +394,9 @@ mod CampaignPools {
 
             // Validate application requirements
             ValidationImpl::validate_can_apply(@self, campaign_address, campaign_pool_address, amount);
-
+           // Ensure amount is valid (not zero)
+            assert(amount > 0, Errors::INVALID_AMOUNT);
+            
             // Store the application
             self.campaign_pool_applications.write(campaign_address, (campaign_pool_address, amount));
             // Mark campaign as having applied to this pool
