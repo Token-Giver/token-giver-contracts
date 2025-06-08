@@ -71,9 +71,10 @@ fn __setup__() -> (ContractAddress, ContractAddress, ContractAddress) {
     let mut calldata = array![];
     nft_class_hash.serialize(ref calldata);
     nft_address.serialize(ref calldata);
-
     strk_address.serialize(ref calldata);
     owner.serialize(ref calldata);
+    let max_pools_per_user: u16 = 5; // Valor por defecto razonable
+    max_pools_per_user.serialize(ref calldata);
 
     let (contract_address, _) = class_hash.deploy(@calldata).unwrap();
 
@@ -102,6 +103,12 @@ fn deploy_erc20() -> ContractAddress {
     address
 }
 
+// Constants for default values
+const DEFAULT_VOTING_DURATION: u64 = 100; // 7 days
+const DEFAULT_APPLICATION_DURATION: u64 = 100; // 3 days
+const DEFAULT_MAX_AMOUNT: u256 = 100; // 1 token
+const DEFAULT_MAX_APPLICATIONS: u32 = 100;
+
 #[test]
 #[fork("Mainnet")]
 fn test_create_campaign_pool() {
@@ -120,7 +127,16 @@ fn test_create_campaign_pool() {
     // Create campaign with explicit type conversions
     start_cheat_caller_address(token_giver_address, recipient);
     let created_campaign_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt,
+            recipient,
+            campaign_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
     stop_cheat_caller_address(token_giver_address);
 
     // Get campaign details
@@ -151,7 +167,16 @@ fn test_create_campaign_pool_event_emission() {
     // Create campaign with explicit type conversions
     start_cheat_caller_address(token_giver_address, recipient);
     let created_campaign_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt,
+            recipient,
+            campaign_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
     stop_cheat_caller_address(token_giver_address);
 
     // Get campaign details
@@ -194,13 +219,29 @@ fn test_apply_to_campaign_pool_success() {
     // Create campaign pool
     start_cheat_caller_address(token_giver_address, recipient);
     let campaign_pool_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt,
+            recipient,
+            pool_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
 
     // Create campaign with different salt
     let campaign_salt: felt252 = 'campaign_salt';
     let campaign_address = token_giver
         .create_campaign_pool(
-            registry_hash, implementation_hash, campaign_salt, recipient, campaign_id
+            registry_hash,
+            implementation_hash,
+            campaign_salt,
+            recipient,
+            campaign_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
         );
     stop_cheat_caller_address(token_giver_address);
 
@@ -251,7 +292,16 @@ fn test_apply_with_invalid_campaign_address() {
     // Create campaign pool
     start_cheat_caller_address(token_giver_address, recipient);
     let campaign_pool_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, pool_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt,
+            recipient,
+            pool_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
     stop_cheat_caller_address(token_giver_address);
 
     // Use an invalid campaign address
@@ -281,7 +331,16 @@ fn test_apply_with_invalid_pool_address() {
     // Create campaign
     start_cheat_caller_address(token_giver_address, recipient);
     let campaign_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt, recipient, campaign_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt,
+            recipient,
+            campaign_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
     stop_cheat_caller_address(token_giver_address);
 
     // Use an invalid pool address
@@ -313,9 +372,27 @@ fn test_apply_with_zero_amount() {
     // Create campaign pool and campaign
     start_cheat_caller_address(token_giver_address, recipient);
     let campaign_pool_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt1, recipient, pool_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt1,
+            recipient,
+            pool_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
     let campaign_address = token_giver
-        .create_campaign_pool(registry_hash, implementation_hash, salt2, recipient, campaign_id);
+        .create_campaign_pool(
+            registry_hash,
+            implementation_hash,
+            salt2,
+            recipient,
+            campaign_id,
+            DEFAULT_VOTING_DURATION,
+            DEFAULT_APPLICATION_DURATION,
+            DEFAULT_MAX_AMOUNT
+        );
 
     // Try to apply with zero amount, should fail
     let zero_amount: u256 = 0;

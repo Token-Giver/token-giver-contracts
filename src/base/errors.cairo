@@ -13,4 +13,17 @@ pub mod Errors {
     pub const INVALID_CAMPAIGN_ADDRESS: felt252 = 'TGN: invalid campaign address!';
     pub const INVALID_POOL_ADDRESS: felt252 = 'TGN: invalid pool address!';
     pub const INVALID_AMOUNT: felt252 = 'TGN: invalid amount!';
+    pub const ZERO_ADDRESS: felt252 = 'TGN: zero address not allowed';
+    pub const INVALID_REGISTRY_HASH: felt252 = 'TGN: invalid registry hash';
+    pub const INVALID_IMPLEMENTATION_HASH: felt252 = 'TGN: invalid impl hash';
+    pub const CAMPAIGN_POOL_EXISTS: felt252 = 'TGN: campaign pool exists';
+    pub const MAX_POOLS_EXCEEDED: felt252 = 'TGN: max pools exceeded';
+    pub const CAMPAIGN_POOL_CLOSED: felt252 = 'TGN: campaign pool is closed!';
+    pub const CAMPAIGN_NOT_IN_POOL: felt252 = 'TGN: campaign not in this pool!';
+    pub const VOTING_PERIOD_ENDED: felt252 = 'TGN: voting period has ended!';
+    pub const VOTING_NOT_STARTED: felt252 = 'TGN: not started yet!';
+    pub const APPLICATIONS_NOT_ACCEPTED: felt252 = 'TGN: not accepting applications';
+    pub const APPLICATION_DEADLINE_PASSED: felt252 = 'TGN: deadline passed';
+    pub const ALREADY_APPLIED: felt252 = 'TGN: campaign already applied';
+    pub const AMOUNT_EXCEEDS_MAX: felt252 = 'TGN: amount exceeds max allowed';
 }
