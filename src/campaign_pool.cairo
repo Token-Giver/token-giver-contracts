@@ -29,6 +29,8 @@ mod CampaignPools {
         ITokenGiverNftDispatcher, ITokenGiverNftDispatcherTrait,
     };
 
+    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
@@ -287,7 +289,65 @@ mod CampaignPools {
 
         fn donate_campaign_pool(
             ref self: ContractState, campaign_pool_address: ContractAddress, amount: u256,
-        ) {}
+        ) {
+            // Get caller address
+            let caller = get_caller_address();
+
+            // Validate inputs
+            assert(amount > 0, Errors::INVALID_AMOUNT);
+
+            // Verify campaign pool exists and is valid
+            let campaign_pool = self.campaign_pool.read(campaign_pool_address);
+            assert(
+                campaign_pool.campaign_address != starknet::contract_address_const::<0>(),
+                Errors::INVALID_POOL_ADDRESS
+            );
+
+            // Check that the campaign pool is not closed
+            assert(!campaign_pool.is_closed, 'Campaign pool is closed');
+
+            // Get STRK token address for transfers
+            let strk_address = self.strk_address.read();
+
+            // Transfer tokens from donor to campaign pool
+            let strk_dispatcher = IERC20Dispatcher { contract_address: strk_address };
+
+            // Transfer tokens from caller to campaign pool
+            let transfer_success = strk_dispatcher
+                .transfer_from(caller, campaign_pool_address, amount);
+            assert(transfer_success, 'Token transfer failed');
+
+            // Update donor's total donation amount
+            let current_donor_donations = self.donations.read(caller);
+            self.donations.write(caller, current_donor_donations + amount);
+
+            // Update donation count for the donor
+            let current_donation_count = self.donation_count.read(caller);
+            self.donation_count.write(caller, current_donation_count + 1);
+
+            // store donation details
+            let donation_detail = DonationDetails {
+                campaign_address: campaign_pool.campaign_address,
+                token_id: campaign_pool.token_id,
+                donor_address: caller,
+                amount: amount,
+            };
+
+            self
+                .donation_details
+                .write((campaign_pool_address, campaign_pool.campaign_address), donation_detail);
+
+            // Emit event
+            self
+                .emit(
+                    DonationMade {
+                        campaign_pool_address: campaign_pool_address,
+                        donor_address: caller,
+                        amount: amount,
+                        block_timestamp: get_block_timestamp(),
+                    }
+                );
+        }
 
         fn apply_to_campaign_pool(
             ref self: ContractState,
