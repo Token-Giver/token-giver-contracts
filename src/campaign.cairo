@@ -56,6 +56,9 @@ mod TokengiverCampaign {
         CreateCampaign: CreateCampaign,
         DonationCreated: DonationCreated,
         DeployedTokenGiverNFT: DeployedTokenGiverNFT,
+        CampaignPoolClosed: CampaignPoolClosed,
+        DonationReceived: DonationReceived,
+        ApplicationStatusChanged: ApplicationStatusChanged,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -84,6 +87,34 @@ mod TokengiverCampaign {
         amount: u256,
         token_id: u256,
         block_timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct CampaignPoolClosed {
+        campaign_pool_address: ContractAddress,
+        final_amount_raised: u256,
+        total_applications: u32,
+        total_votes: u32,
+        closed_by: ContractAddress,
+        timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DonationReceived {
+        campaign_pool_address: ContractAddress,
+        donor: ContractAddress,
+        amount: u256,
+        total_pool_amount: u256,
+        timestamp: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct ApplicationStatusChanged {
+        campaign_address: ContractAddress,
+        campaign_pool_address: ContractAddress,
+        old_status: felt252,
+        new_status: felt252,
+        timestamp: u64,
     }
 
     // *************************************************************************
